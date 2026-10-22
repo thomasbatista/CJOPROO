@@ -1,0 +1,20 @@
+# Diretórios de build
+build/
+build-*/
+cmake-build-*/
+out/
+
+# Arquivos de usuário do Qt Creator
+CMakeLists.txt.user
+CMakeLists.txt.user.*
+*.autosave
+
+# IDEs e editores
+.vs/
+.vscode/
+.idea/
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
