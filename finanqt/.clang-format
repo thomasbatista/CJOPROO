@@ -1,0 +1,53 @@
+BasedOnStyle: Google
+Language: Cpp
+Standard: c++17
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+AccessModifierOffset: -4
+
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Right
+AlignOperands: Align
+AlignTrailingComments: true
+
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakTemplateDeclarations: Yes
+
+BinPackArguments: true
+BinPackParameters: true
+
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Attach
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<Q.*'
+    Priority: 1
+  - Regex: '^<.*'
+    Priority: 2
+  - Regex: '.*'
+    Priority: 3
+
+PointerAlignment: Right
+ReferenceAlignment: Right
+SpacesBeforeTrailingComments: 1
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
