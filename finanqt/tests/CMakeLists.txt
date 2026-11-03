@@ -33,3 +33,15 @@ target_link_libraries(tst_Ledger PRIVATE
 )
 
 add_test(NAME tst_Ledger COMMAND tst_Ledger)
+
+add_executable(tst_JsonRepository
+    tst_JsonRepository.cpp
+)
+
+target_link_libraries(tst_JsonRepository PRIVATE
+    FinanQtCore
+    Qt6::Core
+    Qt6::Test
+)
+
+add_test(NAME tst_JsonRepository COMMAND tst_JsonRepository)

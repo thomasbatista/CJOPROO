@@ -45,6 +45,9 @@ add_library(FinanQtCore STATIC
     src/model/Budget.cpp
     src/model/Ledger.h
     src/model/Ledger.cpp
+    src/persistence/IRepository.h
+    src/persistence/JsonRepository.h
+    src/persistence/JsonRepository.cpp
 )
 
 target_include_directories(FinanQtCore PUBLIC
