@@ -41,6 +41,10 @@ add_library(FinanQtCore STATIC
     src/model/InstallmentExpense.cpp
     src/model/RecurringExpense.h
     src/model/RecurringExpense.cpp
+    src/model/Budget.h
+    src/model/Budget.cpp
+    src/model/Ledger.h
+    src/model/Ledger.cpp
 )
 
 target_include_directories(FinanQtCore PUBLIC
