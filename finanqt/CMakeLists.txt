@@ -20,7 +20,27 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Test)
+
+enable_testing()
+
+add_library(FinanQtCore STATIC
+    src/model/Money.h
+    src/model/Money.cpp
+    src/model/Category.h
+    src/model/Category.cpp
+    src/model/ValidationError.h
+    src/model/ValidationError.cpp
+)
+
+target_include_directories(FinanQtCore PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(FinanQtCore PUBLIC
+    Qt6::Core
+    Qt6::Gui
+)
 
 add_executable(FinanQt
     src/main.cpp
@@ -33,7 +53,8 @@ target_include_directories(FinanQt PRIVATE
 )
 
 target_link_libraries(FinanQt PRIVATE
-    Qt6::Core
-    Qt6::Gui
+    FinanQtCore
     Qt6::Widgets
 )
+
+add_subdirectory(tests)
