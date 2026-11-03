@@ -31,6 +31,16 @@ add_library(FinanQtCore STATIC
     src/model/Category.cpp
     src/model/ValidationError.h
     src/model/ValidationError.cpp
+    src/model/Transaction.h
+    src/model/Transaction.cpp
+    src/model/Income.h
+    src/model/Income.cpp
+    src/model/Expense.h
+    src/model/Expense.cpp
+    src/model/InstallmentExpense.h
+    src/model/InstallmentExpense.cpp
+    src/model/RecurringExpense.h
+    src/model/RecurringExpense.cpp
 )
 
 target_include_directories(FinanQtCore PUBLIC
