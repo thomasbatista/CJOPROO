@@ -5,11 +5,15 @@
 TransactionFilterProxyModel::TransactionFilterProxyModel(QObject *parent)
     : QSortFilterProxyModel(parent) {}
 
-void TransactionFilterProxyModel::setCategoryName(const QString &categoryName) {
-    if (m_categoryName != categoryName) {
-        m_categoryName = categoryName;
-        invalidateFilter();
-    }
+void TransactionFilterProxyModel::setCategoryName(const QString &name) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    beginFilterChange();
+    m_categoryName = name;
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+#else
+    m_categoryName = name;
+    invalidateFilter();
+#endif
 }
 
 QString TransactionFilterProxyModel::categoryName() const {
@@ -17,11 +21,14 @@ QString TransactionFilterProxyModel::categoryName() const {
 }
 
 void TransactionFilterProxyModel::setSearchText(const QString &text) {
-    const QString trimmed = text.trimmed();
-    if (m_searchText != trimmed) {
-        m_searchText = trimmed;
-        invalidateFilter();
-    }
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    beginFilterChange();
+    m_searchText = text;
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+#else
+    m_searchText = text;
+    invalidateFilter();
+#endif
 }
 
 QString TransactionFilterProxyModel::searchText() const {

@@ -8,25 +8,29 @@ O FinanQt permite registrar e acompanhar receitas e despesas (simples, parcelada
 
 ## Principais Recursos
 
-- **Gestão de transações:** cadastro, edição e remoção de receitas e despesas.
-- **Tipos especiais de despesa:** despesas parceladas (valor distribuído entre os meses) e recorrentes (repetidas mensalmente, com data final opcional).
-- **Controle orçamentário:** limite mensal por categoria, com status Normal, Atenção (a partir de 80%) e Estourado.
-- **Gráfico de gastos:** distribuição dos gastos por categoria em um gráfico de barras desenhado com `QPainter`.
-- **Tabela com filtros:** visualização baseada em Model/View (`QAbstractTableModel`), com ordenação e busca em tempo real via `QSortFilterProxyModel`.
-- **Persistência:** serialização e desserialização em JSON em `QStandardPaths::AppDataLocation`.
-- **Precisão financeira:** valores monetários em centavos inteiros (`qint64`), evitando imprecisão de ponto flutuante.
+- **Gestão de transações:** cadastro, edição e remoção de receitas e despesas, com confirmação na remoção.
+- **Tipos especiais de despesa:** parceladas (valor distribuído entre os meses, com a última parcela absorvendo o resto da divisão) e recorrentes (repetidas mensalmente, com data final opcional).
+- **Categorias com tipo:** cada categoria é de receita ou de despesa, com cor própria, e novas categorias podem ser criadas pelo diálogo de transação.
+- **Controle orçamentário:** limite mensal por categoria de despesa, com barra de progresso e status Normal, Atenção (a partir de 80%) e Estourado, além de alerta na barra de status.
+- **Resumo mensal:** receitas, despesas e saldo do mês, com navegação entre meses.
+- **Tabela com filtros:** visualização baseada em Model/View, com ordenação por coluna, filtro por categoria e busca por descrição aplicados em conjunto.
+- **Gráfico de gastos:** barras horizontais por categoria, desenhadas com `QPainter`, usando a cor de cada categoria.
+- **Persistência:** gravação segura em JSON (`QSaveFile`), com versão do formato e dados em `QStandardPaths::AppDataLocation`.
+- **Precisão financeira:** valores monetários em centavos inteiros (`qint64`), sem ponto flutuante no armazenamento.
 
 ## Arquitetura e Conceitos de POO
 
-1. **Abstração:** separação entre entidades de domínio (`Money`, `Transaction`, `Budget`), persistência (`IRepository`) e interface gráfica.
-2. **Encapsulamento:** atributos privados, validação no construtor e acesso por métodos `const`.
-3. **Herança e polimorfismo:** a classe abstrata `Transaction` é especializada por `Income`, `Expense`, `InstallmentExpense` e `RecurringExpense`, que sobrescrevem `valueInMonth` e `toJson`.
+1. **Abstração:** separação entre entidades de domínio (`Money`, `Category`, `Transaction`, `Budget`, `Ledger`), persistência (`IRepository`) e interface gráfica.
+2. **Encapsulamento:** atributos privados, validação nos construtores e acesso por métodos `const`; o `Ledger` expõe as transações apenas como ponteiros para leitura.
+3. **Herança e polimorfismo:** a classe abstrata `Transaction` é especializada por `Income` e `Expense`, e esta por `InstallmentExpense` e `RecurringExpense`, que sobrescrevem `valueInMonth` e `toJson`.
 4. **Sobrecarga de operadores:** `Money` implementa operadores aritméticos e relacionais.
 5. **Composição:** `Ledger` agrega transações (`std::unique_ptr<Transaction>`), orçamentos e categorias.
-6. **Inversão de dependência:** a camada superior depende da interface `IRepository`, e não de `JsonRepository`.
+6. **Inversão de dependência:** a `MainWindow` depende da interface `IRepository`, e não da implementação `JsonRepository`.
 7. **Observer:** notificação de mudanças por signals e slots (`Ledger::changed`).
-8. **Model/View:** `TransactionTableModel` herda de `QAbstractTableModel`.
+8. **Model/View:** `TransactionTableModel` herda de `QAbstractTableModel`, e `TransactionFilterProxyModel` herda de `QSortFilterProxyModel` para combinar os filtros.
 9. **Tratamento de exceções:** entradas inválidas lançam `ValidationError`.
+10. **Tipos fortemente tipados:** `enum class` para `TransactionType`, `CategoryKind` e `Budget::Status`.
+11. **Factory Method:** `Transaction::fromJson` cria a subclasse correta a partir do JSON.
 
 ## Estrutura do Projeto
 
@@ -36,14 +40,16 @@ finanqt/
 ├── README.md
 ├── .gitignore
 ├── .clang-format
-├── resources.qrc
-├── assets/
 ├── src/
 │   ├── main.cpp
-│   ├── model/
-│   ├── persistence/
-│   └── ui/
-└── tests/
+│   ├── model/          Money, Category, ValidationError, Transaction, Income,
+│   │                   Expense, InstallmentExpense, RecurringExpense, Budget, Ledger
+│   ├── persistence/    IRepository, JsonRepository
+│   └── ui/             MainWindow, TransactionDialog, BudgetDialog,
+│                       TransactionTableModel, TransactionFilterProxyModel,
+│                       SpendingChartWidget
+└── tests/              testes unitários com QtTest (Money, Transaction, Ledger,
+                        JsonRepository, TransactionTableModel)
 ```
 
 ## Requisitos
@@ -71,6 +77,15 @@ cmake --build build
 ```
 
 Para executar, use `./build/FinanQt` (Linux e macOS) ou `.\build\FinanQt.exe` (Windows).
+
+## Testes
+
+```bash
+cd finanqt/build
+ctest --output-on-failure
+```
+
+Os testes também podem ser executados pelo Qt Creator, no painel de resultados de testes.
 
 ## Informações Acadêmicas
 
