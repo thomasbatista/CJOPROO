@@ -63,6 +63,10 @@ add_executable(FinanQt
     src/ui/TransactionDialog.cpp
     src/ui/BudgetDialog.h
     src/ui/BudgetDialog.cpp
+    src/ui/TransactionFilterProxyModel.h
+    src/ui/TransactionFilterProxyModel.cpp
+    src/ui/SpendingChartWidget.h
+    src/ui/SpendingChartWidget.cpp
 )
 
 target_include_directories(FinanQt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

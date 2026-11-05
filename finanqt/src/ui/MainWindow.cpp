@@ -1,9 +1,4 @@
 #include "ui/MainWindow.h"
-#include "model/ValidationError.h"
-#include "persistence/JsonRepository.h"
-#include "ui/BudgetDialog.h"
-#include "ui/TransactionDialog.h"
-#include "ui/TransactionTableModel.h"
 
 #include <QCloseEvent>
 #include <QComboBox>
@@ -14,21 +9,28 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScrollArea>
-#include <QSortFilterProxyModel>
 #include <QStatusBar>
 #include <QTableView>
 #include <QVBoxLayout>
+
+#include "model/ValidationError.h"
+#include "persistence/JsonRepository.h"
+#include "ui/BudgetDialog.h"
+#include "ui/SpendingChartWidget.h"
+#include "ui/TransactionDialog.h"
+#include "ui/TransactionFilterProxyModel.h"
+#include "ui/TransactionTableModel.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       m_ledger(std::make_unique<Ledger>()),
       m_repository(std::make_unique<JsonRepository>()),
       m_currentMonth(QDate::currentDate()) {
-
     setupUi();
 
     m_loadFailed = !loadData();
@@ -47,7 +49,7 @@ void MainWindow::setupUi() {
     mainLayout->setContentsMargins(12, 12, 12, 12);
     mainLayout->setSpacing(8);
 
-    // 1. Barra de Navegacao de Mes
+    // 1. Barra de Navegação de Mês
     auto *navLayout = new QHBoxLayout();
     auto *prevMonthBtn = new QPushButton(QStringLiteral("◀ Mês Anterior"), this);
     auto *todayBtn = new QPushButton(QStringLiteral("Hoje"), this);
@@ -111,10 +113,10 @@ void MainWindow::setupUi() {
 
     mainLayout->addWidget(summaryGroup);
 
-    // 3. Painel Central: Tabela a esquerda | Orcamentos e Grafico a direita
+    // 3. Painel Central: Tabela à esquerda | Orçamentos e Gráfico à direita
     auto *contentSplitLayout = new QHBoxLayout();
 
-    // Coluna da Esquerda: Acoes, Filtros e Tabela de Transacoes
+    // Coluna da Esquerda: Ações, Filtros e Tabela de Transações
     auto *leftLayout = new QVBoxLayout();
 
     auto *toolbarLayout = new QHBoxLayout();
@@ -148,13 +150,12 @@ void MainWindow::setupUi() {
     filterLayout->addWidget(m_searchEdit, 1);
     leftLayout->addLayout(filterLayout);
 
-    // Model e Proxy
+    // Model e Proxy com suporte cumulativo a categoria e busca
     m_tableModel = new TransactionTableModel(m_ledger.get(), m_currentMonth, this);
 
-    m_proxyModel = new QSortFilterProxyModel(this);
+    m_proxyModel = new TransactionFilterProxyModel(this);
     m_proxyModel->setSourceModel(m_tableModel);
     m_proxyModel->setSortRole(SortValueRole);
-    m_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
     m_tableView = new QTableView(this);
     m_tableView->setModel(m_proxyModel);
@@ -173,10 +174,10 @@ void MainWindow::setupUi() {
     leftLayout->addWidget(m_tableView, 1);
     contentSplitLayout->addLayout(leftLayout, 3);
 
-    // Coluna da Direita: Painel de Orcamentos e Container reservado para Grafico
+    // Coluna da Direita: Painel de Orçamentos e Gráfico de Gastos por Categoria
     auto *rightLayout = new QVBoxLayout();
 
-    // Painel de Orcamentos com scroll
+    // Painel de Orçamentos com scroll
     m_budgetGroupBox = new QGroupBox(QStringLiteral("Orçamentos do Mês"), this);
     auto *budgetOuterLayout = new QVBoxLayout(m_budgetGroupBox);
 
@@ -193,14 +194,18 @@ void MainWindow::setupUi() {
     budgetOuterLayout->addWidget(budgetScroll);
     rightLayout->addWidget(m_budgetGroupBox, 1);
 
-    // Area reservada para o grafico de gastos (Etapa 10)
+    // Painel de Gráfico de Gastos por Categoria
     m_chartGroupBox = new QGroupBox(QStringLiteral("Gastos por categoria"), this);
-    m_chartLayout = new QVBoxLayout(m_chartGroupBox);
-    auto *chartPlaceholder = new QLabel(QStringLiteral("Visualização de gastos por categoria."),
-                                        m_chartGroupBox);
-    chartPlaceholder->setAlignment(Qt::AlignCenter);
-    chartPlaceholder->setStyleSheet(QStringLiteral("color: #888888; font-style: italic;"));
-    m_chartLayout->addWidget(chartPlaceholder);
+    auto *chartGroupLayout = new QVBoxLayout(m_chartGroupBox);
+
+    auto *chartScroll = new QScrollArea(m_chartGroupBox);
+    chartScroll->setWidgetResizable(true);
+    chartScroll->setFrameShape(QFrame::NoFrame);
+
+    m_chartWidget = new SpendingChartWidget(chartScroll);
+    chartScroll->setWidget(m_chartWidget);
+    chartGroupLayout->addWidget(chartScroll);
+
     rightLayout->addWidget(m_chartGroupBox, 1);
 
     contentSplitLayout->addLayout(rightLayout, 2);
@@ -217,14 +222,15 @@ void MainWindow::setupConnections() {
     connect(m_ledger.get(), &Ledger::changed, this, &MainWindow::saveData);
     connect(m_ledger.get(), &Ledger::changed, this, &MainWindow::onLedgerChanged);
 
-    connect(m_categoryFilterCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &MainWindow::onCategoryFilterChanged);
+    connect(m_categoryFilterCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &MainWindow::onCategoryFilterChanged);
 
     connect(m_searchEdit, &QLineEdit::textChanged, this, &MainWindow::onSearchTextChanged);
 }
 
 void MainWindow::updateMonthView() {
-    const QString monthName = m_currentMonth.toString(QStringLiteral("MMMM 'de' yyyy"));
+    const QLocale ptBr(QLocale::Portuguese, QLocale::Brazil);
+    const QString monthName = ptBr.toString(m_currentMonth, QStringLiteral("MMMM 'de' yyyy"));
     QString formatted = monthName;
     if (!formatted.isEmpty()) {
         formatted[0] = formatted[0].toUpper();
@@ -234,6 +240,7 @@ void MainWindow::updateMonthView() {
     m_tableModel->setMonth(m_currentMonth);
     updateSummaryPanel();
     updateBudgetsPanel();
+    updateChartPanel();
 }
 
 void MainWindow::updateSummaryPanel() {
@@ -253,7 +260,6 @@ void MainWindow::updateSummaryPanel() {
 }
 
 void MainWindow::updateBudgetsPanel() {
-    // Limpa os widgets anteriores do layout de orcamentos
     QLayoutItem *item;
     while ((item = m_budgetListLayout->takeAt(0)) != nullptr) {
         if (item->widget()) {
@@ -264,7 +270,8 @@ void MainWindow::updateBudgetsPanel() {
 
     const auto budgets = m_ledger->budgets();
     if (budgets.empty()) {
-        auto *emptyLabel = new QLabel(QStringLiteral("Nenhum orçamento configurado."), m_budgetGroupBox);
+        auto *emptyLabel =
+            new QLabel(QStringLiteral("Nenhum orçamento configurado."), m_budgetGroupBox);
         emptyLabel->setAlignment(Qt::AlignCenter);
         emptyLabel->setStyleSheet(QStringLiteral("color: #888888; font-style: italic;"));
         m_budgetListLayout->addWidget(emptyLabel);
@@ -272,13 +279,13 @@ void MainWindow::updateBudgetsPanel() {
         return;
     }
 
-    // Calcula despesas do mes por categoria
     const auto spendings = m_ledger->spendingByCategory(m_currentMonth);
     std::map<QString, Money> spendingMap;
     for (const auto &pair : spendings) {
         spendingMap[pair.first.id()] = pair.second;
     }
 
+    const QLocale ptBr(QLocale::Portuguese, QLocale::Brazil);
     int warningCount = 0;
     int exceededCount = 0;
 
@@ -299,23 +306,21 @@ void MainWindow::updateBudgetsPanel() {
         itemLayout->setContentsMargins(2, 2, 2, 2);
         itemLayout->setSpacing(2);
 
-        // Cabecalho da categoria e percentual
         auto *headerLayout = new QHBoxLayout();
         auto *catNameLabel = new QLabel(b.category().name(), itemContainer);
         catNameLabel->setStyleSheet(QStringLiteral("font-weight: bold;"));
 
         const double pct = b.percentageSpent(spent);
-        auto *pctLabel = new QLabel(QStringLiteral("%1%").arg(pct, 0, 'f', 1), itemContainer);
+        const QString pctStr = ptBr.toString(pct, 'f', 1);
+        auto *pctLabel = new QLabel(QStringLiteral("%1%").arg(pctStr), itemContainer);
 
         headerLayout->addWidget(catNameLabel);
         headerLayout->addStretch(1);
         headerLayout->addWidget(pctLabel);
         itemLayout->addLayout(headerLayout);
 
-        // Barra de progresso com texto "gasto / limite"
         auto *bar = new QProgressBar(itemContainer);
         bar->setRange(0, 100);
-        // Limita a barra visual a 100%, mas o texto mostra o valor real
         const int visualValue = qBound(0, static_cast<int>(pct), 100);
         bar->setValue(visualValue);
 
@@ -324,19 +329,20 @@ void MainWindow::updateBudgetsPanel() {
         bar->setFormat(formatText);
         bar->setAlignment(Qt::AlignCenter);
 
-        // Cores semanticas: verde (Ok), amarelo (Warning) e vermelho (Exceeded)
         QString chunkColor;
         if (st == Budget::Status::Exceeded) {
-            chunkColor = QStringLiteral("#D32F2F"); // Vermelho
+            chunkColor = QStringLiteral("#D32F2F");
         } else if (st == Budget::Status::Warning) {
-            chunkColor = QStringLiteral("#FBC02D"); // Amarelo
+            chunkColor = QStringLiteral("#FBC02D");
         } else {
-            chunkColor = QStringLiteral("#388E3C"); // Verde
+            chunkColor = QStringLiteral("#388E3C");
         }
 
-        bar->setStyleSheet(QStringLiteral(
-            "QProgressBar { border: 1px solid #CCCCCC; border-radius: 4px; text-align: center; height: 18px; }"
-            "QProgressBar::chunk { background-color: %1; border-radius: 3px; }").arg(chunkColor));
+        bar->setStyleSheet(
+            QStringLiteral("QProgressBar { border: 1px solid #CCCCCC; border-radius: 4px; "
+                           "text-align: center; height: 18px; }"
+                           "QProgressBar::chunk { background-color: %1; border-radius: 3px; }")
+                .arg(chunkColor));
 
         itemLayout->addWidget(bar);
         m_budgetListLayout->addWidget(itemContainer);
@@ -344,19 +350,41 @@ void MainWindow::updateBudgetsPanel() {
 
     m_budgetListLayout->addStretch(1);
 
-    // Aviso discreto na barra de status se houver alertas
     if (exceededCount > 0 && warningCount > 0) {
-        statusBar()->showMessage(QStringLiteral("⚠️ Alerta: %1 orçamento(s) estourado(s) e %2 em atenção!")
-                                     .arg(exceededCount).arg(warningCount));
+        statusBar()->showMessage(
+            QStringLiteral("Alerta: %1 orçamento(s) estourado(s) e %2 em atenção!")
+                .arg(exceededCount)
+                .arg(warningCount));
     } else if (exceededCount > 0) {
-        statusBar()->showMessage(QStringLiteral("⚠️ Alerta: %1 orçamento(s) estourado(s) no mês atual!")
-                                     .arg(exceededCount));
+        statusBar()->showMessage(
+            QStringLiteral("Alerta: %1 orçamento(s) estourado(s) no mês atual!")
+                .arg(exceededCount));
     } else if (warningCount > 0) {
-        statusBar()->showMessage(QStringLiteral("⚠️ Atenção: %1 orçamento(s) atingiram 80% do limite.")
-                                     .arg(warningCount));
+        statusBar()->showMessage(
+            QStringLiteral("Atenção: %1 orçamento(s) atingiram 80% do limite.").arg(warningCount));
     } else {
-        statusBar()->showMessage(QStringLiteral("Todos os orçamentos estão dentro do limite seguro."));
+        statusBar()->showMessage(
+            QStringLiteral("Todos os orçamentos estão dentro do limite seguro."));
     }
+}
+
+void MainWindow::updateChartPanel() {
+    if (!m_chartWidget) {
+        return;
+    }
+
+    const auto spendings = m_ledger->spendingByCategory(m_currentMonth);
+    QVector<SpendingChartWidget::Entry> entries;
+    entries.reserve(static_cast<int>(spendings.size()));
+
+    for (const auto &pair : spendings) {
+        const Category &cat = pair.first;
+        const Money &amount = pair.second;
+        entries.append(
+            SpendingChartWidget::Entry{cat.name(), QColor(cat.colorHex()), amount.cents()});
+    }
+
+    m_chartWidget->setEntries(entries);
 }
 
 void MainWindow::populateCategoryFilter() {
@@ -383,6 +411,7 @@ void MainWindow::onLedgerChanged() {
     populateCategoryFilter();
     updateSummaryPanel();
     updateBudgetsPanel();
+    updateChartPanel();
 }
 
 void MainWindow::onPreviousMonth() {
@@ -400,26 +429,16 @@ void MainWindow::onCurrentMonth() {
     updateMonthView();
 }
 
-void MainWindow::onCategoryFilterChanged(int /*index*/) {
-    if (m_categoryFilterCombo->currentIndex() <= 0) {
-        m_proxyModel->setFilterKeyColumn(-1);
-        m_proxyModel->setFilterFixedString(QString());
-        return;
+void MainWindow::onCategoryFilterChanged(int index) {
+    if (index <= 0) {
+        m_proxyModel->setCategoryName(QString());
+    } else {
+        m_proxyModel->setCategoryName(m_categoryFilterCombo->currentText());
     }
-
-    const QString selectedCategoryName = m_categoryFilterCombo->currentText();
-    m_proxyModel->setFilterKeyColumn(static_cast<int>(TransactionColumn::Category));
-    m_proxyModel->setFilterFixedString(selectedCategoryName);
 }
 
 void MainWindow::onSearchTextChanged(const QString &text) {
-    if (text.trimmed().isEmpty()) {
-        onCategoryFilterChanged(m_categoryFilterCombo->currentIndex());
-        return;
-    }
-
-    m_proxyModel->setFilterKeyColumn(static_cast<int>(TransactionColumn::Description));
-    m_proxyModel->setFilterRegularExpression(QRegularExpression::escape(text.trimmed()));
+    m_proxyModel->setSearchText(text.trimmed());
 }
 
 QString MainWindow::selectedTransactionId() const {
@@ -461,8 +480,9 @@ void MainWindow::onEditTransaction() {
 
     const Transaction *tx = m_ledger->findTransactionById(txId);
     if (!tx) {
-        QMessageBox::warning(this, QStringLiteral("Erro"),
-                             QStringLiteral("Transação selecionada não foi encontrada no livro razão."));
+        QMessageBox::warning(
+            this, QStringLiteral("Erro"),
+            QStringLiteral("Transação selecionada não foi encontrada no livro razão."));
         return;
     }
 
@@ -518,8 +538,7 @@ void MainWindow::onTableDoubleClicked(const QModelIndex & /*index*/) {
 bool MainWindow::loadData() {
     const QString path = JsonRepository::defaultFilePath();
     if (!m_repository->load(*m_ledger, path)) {
-        QMessageBox::critical(this,
-                              QStringLiteral("Erro ao carregar dados"),
+        QMessageBox::critical(this, QStringLiteral("Erro ao carregar dados"),
                               QStringLiteral("Não foi possível carregar o arquivo de dados.\n\n"
                                              "Detalhe: %1\n\n"
                                              "O arquivo existente não será sobrescrito.")
@@ -536,8 +555,7 @@ void MainWindow::saveData() {
 
     const QString path = JsonRepository::defaultFilePath();
     if (!m_repository->save(*m_ledger, path)) {
-        QMessageBox::warning(this,
-                             QStringLiteral("Erro ao salvar"),
+        QMessageBox::warning(this, QStringLiteral("Erro ao salvar"),
                              QStringLiteral("Não foi possível salvar os dados.\n\n"
                                             "Detalhe: %1")
                                  .arg(m_repository->lastError()));

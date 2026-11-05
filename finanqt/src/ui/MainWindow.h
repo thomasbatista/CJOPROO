@@ -2,6 +2,7 @@
 
 #include <QDate>
 #include <QMainWindow>
+
 #include <memory>
 
 #include "model/Ledger.h"
@@ -11,9 +12,10 @@ class QComboBox;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
-class QSortFilterProxyModel;
 class QTableView;
 class QVBoxLayout;
+class SpendingChartWidget;
+class TransactionFilterProxyModel;
 class TransactionTableModel;
 
 /**
@@ -21,7 +23,8 @@ class TransactionTableModel;
  *
  * Coordena os botões de ação (Adicionar, Editar, Remover e Orçamentos), o painel de
  * resumo mensal (receitas, despesas e saldo), a navegação entre meses, a listagem de
- * orçamentos com barras de progresso estilizadas por status e a tabela filtrada.
+ * orçamentos com barras de progresso estilizadas, o gráfico de gastos por categoria
+ * e a tabela de transações com ordenação e filtros combinados.
  */
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -64,6 +67,7 @@ private:
     void updateMonthView();
     void updateSummaryPanel();
     void updateBudgetsPanel();
+    void updateChartPanel();
     void populateCategoryFilter();
 
     bool loadData();
@@ -75,10 +79,10 @@ private:
     std::unique_ptr<IRepository> m_repository;
 
     TransactionTableModel *m_tableModel{nullptr};
-    QSortFilterProxyModel *m_proxyModel{nullptr};
+    TransactionFilterProxyModel *m_proxyModel{nullptr};
     QTableView *m_tableView{nullptr};
 
-    // Navegacao de mes
+    // Navegação de mês
     QLabel *m_monthLabel{nullptr};
     QDate m_currentMonth;
 
@@ -87,13 +91,13 @@ private:
     QLabel *m_expenseValueLabel{nullptr};
     QLabel *m_balanceValueLabel{nullptr};
 
-    // Painel de orcamentos
+    // Painel de orçamentos
     QGroupBox *m_budgetGroupBox{nullptr};
     QVBoxLayout *m_budgetListLayout{nullptr};
 
-    // Area reservada para futuro grafico
+    // Gráfico de gastos por categoria
     QGroupBox *m_chartGroupBox{nullptr};
-    QVBoxLayout *m_chartLayout{nullptr};
+    SpendingChartWidget *m_chartWidget{nullptr};
 
     // Filtros e busca
     QComboBox *m_categoryFilterCombo{nullptr};
