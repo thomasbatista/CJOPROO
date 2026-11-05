@@ -6,7 +6,9 @@
 
 #include "model/ValidationError.h"
 
-Ledger::Ledger(QObject *parent) : QObject(parent), m_categories(Category::defaultCategories()) {}
+Ledger::Ledger(QObject *parent)
+    : QObject(parent), m_categories(Category::defaultCategories()) {
+}
 
 void Ledger::addTransaction(std::unique_ptr<Transaction> transaction) {
     if (!transaction) {
@@ -14,11 +16,10 @@ void Ledger::addTransaction(std::unique_ptr<Transaction> transaction) {
     }
 
     if (findTransactionById(transaction->id()) != nullptr) {
-        throw ValidationError(QStringLiteral("Já existe uma transação cadastrada com o ID '%1'.")
-                                  .arg(transaction->id()));
+        throw ValidationError(
+            QStringLiteral("Já existe uma transação cadastrada com o ID '%1'.").arg(transaction->id()));
     }
 
-    // Registra a categoria automaticamente se for uma categoria nova ainda nao listada
     if (!findCategoryById(transaction->category().id()).has_value()) {
         m_categories.push_back(transaction->category());
     }
@@ -29,8 +30,7 @@ void Ledger::addTransaction(std::unique_ptr<Transaction> transaction) {
 
 void Ledger::replaceTransaction(const QString &id, std::unique_ptr<Transaction> transaction) {
     if (!transaction) {
-        throw ValidationError(
-            QStringLiteral("Transação de substituição inválida (ponteiro nulo)."));
+        throw ValidationError(QStringLiteral("Transação de substituição inválida (ponteiro nulo)."));
     }
 
     auto it = std::find_if(m_transactions.begin(), m_transactions.end(),
@@ -41,10 +41,9 @@ void Ledger::replaceTransaction(const QString &id, std::unique_ptr<Transaction> 
             QStringLiteral("Transação com ID '%1' não encontrada para substituição.").arg(id));
     }
 
-    // Se o ID mudou, garante que nao colide com outra transacao existente
     if (transaction->id() != id && findTransactionById(transaction->id()) != nullptr) {
-        throw ValidationError(QStringLiteral("O novo ID '%1' já está em uso por outra transação.")
-                                  .arg(transaction->id()));
+        throw ValidationError(
+            QStringLiteral("O novo ID '%1' já está em uso por outra transação.").arg(transaction->id()));
     }
 
     if (!findCategoryById(transaction->category().id()).has_value()) {
@@ -103,14 +102,13 @@ void Ledger::addCategory(const Category &category) {
             QStringLiteral("Já existe uma categoria cadastrada com o ID '%1'.").arg(category.id()));
     }
 
-    auto itName =
-        std::find_if(m_categories.begin(), m_categories.end(), [&category](const Category &c) {
-            return c.name().compare(category.name(), Qt::CaseInsensitive) == 0;
-        });
+    auto itName = std::find_if(m_categories.begin(), m_categories.end(), [&category](const Category &c) {
+        return c.name().compare(category.name(), Qt::CaseInsensitive) == 0;
+    });
 
     if (itName != m_categories.end()) {
-        throw ValidationError(QStringLiteral("Já existe uma categoria cadastrada com o nome '%1'.")
-                                  .arg(category.name()));
+        throw ValidationError(
+            QStringLiteral("Já existe uma categoria cadastrada com o nome '%1'.").arg(category.name()));
     }
 
     m_categories.push_back(category);
@@ -126,20 +124,18 @@ void Ledger::removeCategory(const QString &categoryId) {
             QStringLiteral("Categoria com ID '%1' não encontrada para remoção.").arg(categoryId));
     }
 
-    // Regra de negocio: recusa remover categoria em uso por transacoes
     for (const auto &tx : m_transactions) {
         if (tx->category().id() == categoryId) {
-            throw ValidationError(QStringLiteral("Não é possível remover a categoria '%1' pois ela "
-                                                 "está em uso por transações existentes.")
+            throw ValidationError(QStringLiteral(
+                "Não é possível remover a categoria '%1' pois ela está em uso por transações existentes.")
                                       .arg(it->name()));
         }
     }
 
-    // Regra de negocio: recusa remover categoria em uso por orcamentos
     for (const auto &budget : m_budgets) {
         if (budget.category().id() == categoryId) {
-            throw ValidationError(QStringLiteral("Não é possível remover a categoria '%1' pois ela "
-                                                 "possui orçamento ativo configurado.")
+            throw ValidationError(QStringLiteral(
+                "Não é possível remover a categoria '%1' pois ela possui orçamento ativo configurado.")
                                       .arg(it->name()));
         }
     }
@@ -163,7 +159,16 @@ std::optional<Category> Ledger::findCategoryById(const QString &categoryId) cons
 }
 
 void Ledger::setBudget(const Budget &budget) {
-    if (!findCategoryById(budget.category().id()).has_value()) {
+    // Busca a categoria para verificar o tipo (kind)
+    auto catOpt = findCategoryById(budget.category().id());
+    CategoryKind kind = catOpt.has_value() ? catOpt->kind() : budget.category().kind();
+
+    if (kind == CategoryKind::Income) {
+        throw ValidationError(
+            QStringLiteral("Não é permitido definir orçamento para categorias do tipo Receita."));
+    }
+
+    if (!catOpt.has_value()) {
         m_categories.push_back(budget.category());
     }
 
@@ -181,9 +186,8 @@ void Ledger::setBudget(const Budget &budget) {
 }
 
 void Ledger::removeBudget(const QString &categoryId) {
-    auto it = std::find_if(m_budgets.begin(), m_budgets.end(), [&categoryId](const Budget &b) {
-        return b.category().id() == categoryId;
-    });
+    auto it = std::find_if(m_budgets.begin(), m_budgets.end(),
+                           [&categoryId](const Budget &b) { return b.category().id() == categoryId; });
 
     if (it != m_budgets.end()) {
         m_budgets.erase(it);
@@ -196,9 +200,8 @@ std::vector<Budget> Ledger::budgets() const {
 }
 
 std::optional<Budget> Ledger::budgetForCategory(const QString &categoryId) const {
-    auto it = std::find_if(m_budgets.begin(), m_budgets.end(), [&categoryId](const Budget &b) {
-        return b.category().id() == categoryId;
-    });
+    auto it = std::find_if(m_budgets.begin(), m_budgets.end(),
+                           [&categoryId](const Budget &b) { return b.category().id() == categoryId; });
 
     if (it != m_budgets.end()) {
         return *it;
@@ -254,15 +257,13 @@ std::vector<std::pair<Category, Money>> Ledger::spendingByCategory(const QDate &
         result.push_back(std::move(pair.second));
     }
 
-    // Ordena decrescente pelo total gasto para priorizar despesas maiores em graficos e relatorios
     std::sort(result.begin(), result.end(),
               [](const auto &a, const auto &b) { return a.second > b.second; });
 
     return result;
 }
 
-std::optional<Budget::Status> Ledger::budgetStatus(const QString &categoryId,
-                                                   const QDate &month) const {
+std::optional<Budget::Status> Ledger::budgetStatus(const QString &categoryId, const QDate &month) const {
     auto budgetOpt = budgetForCategory(categoryId);
     if (!budgetOpt.has_value()) {
         return std::nullopt;
@@ -287,7 +288,6 @@ void Ledger::clear() {
 
 void Ledger::loadState(std::vector<Category> categories, std::vector<Budget> budgets,
                        std::vector<std::unique_ptr<Transaction>> transactions) {
-    // Validacao de integridade: checa por IDs duplicados entre as transacoes carregadas
     std::unordered_set<QString> seenIds;
     for (const auto &tx : transactions) {
         if (!tx) {
@@ -301,10 +301,30 @@ void Ledger::loadState(std::vector<Category> categories, std::vector<Budget> bud
         }
     }
 
+    // Mapa de identificadores de categoria para o respectivo CategoryKind
+    std::unordered_map<QString, CategoryKind> catKindMap;
+    for (const auto &c : categories) {
+        catKindMap[c.id()] = c.kind();
+    }
+
+    // Filtra e descarta silenciosamente orçamentos associados a categorias Income
+    std::vector<Budget> filteredBudgets;
+    filteredBudgets.reserve(budgets.size());
+    for (const auto &b : budgets) {
+        CategoryKind kind = b.category().kind();
+        auto it = catKindMap.find(b.category().id());
+        if (it != catKindMap.end()) {
+            kind = it->second;
+        }
+
+        if (kind != CategoryKind::Income) {
+            filteredBudgets.push_back(b);
+        }
+    }
+
     m_categories = std::move(categories);
-    m_budgets = std::move(budgets);
+    m_budgets = std::move(filteredBudgets);
     m_transactions = std::move(transactions);
 
-    // Emite o signal changed() uma unica vez ao final da operacao
     emit changed();
 }

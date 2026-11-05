@@ -1,11 +1,4 @@
 #include "ui/TransactionDialog.h"
-#include "model/Expense.h"
-#include "model/Income.h"
-#include "model/InstallmentExpense.h"
-#include "model/Ledger.h"
-#include "model/Money.h"
-#include "model/RecurringExpense.h"
-#include "model/ValidationError.h"
 
 #include <QColorDialog>
 #include <QComboBox>
@@ -22,6 +15,14 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 
+#include "model/Expense.h"
+#include "model/Income.h"
+#include "model/InstallmentExpense.h"
+#include "model/Ledger.h"
+#include "model/Money.h"
+#include "model/RecurringExpense.h"
+#include "model/ValidationError.h"
+
 TransactionDialog::TransactionDialog(Ledger *ledger, const QDate &defaultDate, QWidget *parent)
     : QDialog(parent), m_ledger(ledger), m_isEditMode(false) {
     setupUi();
@@ -30,7 +31,8 @@ TransactionDialog::TransactionDialog(Ledger *ledger, const QDate &defaultDate, Q
     setWindowTitle(QStringLiteral("Nova Transação"));
 }
 
-TransactionDialog::TransactionDialog(Ledger *ledger, const Transaction *transaction, QWidget *parent)
+TransactionDialog::TransactionDialog(Ledger *ledger, const Transaction *transaction,
+                                     QWidget *parent)
     : QDialog(parent), m_ledger(ledger), m_isEditMode(true) {
     setupUi();
     setWindowTitle(QStringLiteral("Editar Transação"));
@@ -46,7 +48,7 @@ void TransactionDialog::setupUi() {
     auto *formLayout = new QFormLayout();
     formLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
-    // Tipo de Transacao
+    // Tipo de Transação
     m_typeCombo = new QComboBox(this);
     m_typeCombo->addItem(QStringLiteral("Receita"), static_cast<int>(TransactionType::Income));
     m_typeCombo->addItem(QStringLiteral("Despesa"), static_cast<int>(TransactionType::Expense));
@@ -56,12 +58,12 @@ void TransactionDialog::setupUi() {
                          static_cast<int>(TransactionType::RecurringExpense));
     formLayout->addRow(QStringLiteral("Tipo:"), m_typeCombo);
 
-    // Descricao
+    // Descrição
     m_descriptionEdit = new QLineEdit(this);
     m_descriptionEdit->setPlaceholderText(QStringLiteral("Ex.: Salário, Supermercado, Aluguel"));
     formLayout->addRow(QStringLiteral("Descrição:"), m_descriptionEdit);
 
-    // Categoria + Botao "Nova categoria"
+    // Categoria + Botão "Nova Categoria"
     auto *categoryLayout = new QHBoxLayout();
     m_categoryCombo = new QComboBox(this);
     categoryLayout->addWidget(m_categoryCombo, 1);
@@ -106,21 +108,21 @@ void TransactionDialog::setupUi() {
 
     mainLayout->addLayout(formLayout);
 
-    // Botoes Padrao Ok / Cancelar
+    // Botões Padrão Ok / Cancelar
     auto *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     mainLayout->addWidget(buttonBox);
 
-    // Conexoes
-    connect(m_typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &TransactionDialog::onTypeChanged);
+    // Conexões
+    connect(m_typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &TransactionDialog::onTypeChanged);
     connect(m_hasEndDateCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
         const bool hasEnd = m_hasEndDateCombo->currentData().toBool();
         m_endDateLabel->setVisible(hasEnd);
         m_endDateEdit->setVisible(hasEnd);
     });
     connect(newCategoryBtn, &QPushButton::clicked, this, &TransactionDialog::onNewCategoryClicked);
-    connect(buttonBox->button(QDialogButtonBox::Ok), &QPushButton::clicked,
-            this, &TransactionDialog::onAcceptClicked);
+    connect(buttonBox->button(QDialogButtonBox::Ok), &QPushButton::clicked, this,
+            &TransactionDialog::onAcceptClicked);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     populateCategories();
@@ -128,13 +130,25 @@ void TransactionDialog::setupUi() {
 }
 
 void TransactionDialog::populateCategories() {
+    const QString previousSelectedId = m_categoryCombo->currentData().toString();
     m_categoryCombo->clear();
     if (!m_ledger) {
         return;
     }
 
+    const auto txType = static_cast<TransactionType>(m_typeCombo->currentData().toInt());
+    const CategoryKind requiredKind =
+        (txType == TransactionType::Income) ? CategoryKind::Income : CategoryKind::Expense;
+
     for (const auto &cat : m_ledger->categories()) {
-        m_categoryCombo->addItem(cat.name(), cat.id());
+        if (cat.kind() == requiredKind) {
+            m_categoryCombo->addItem(cat.name(), cat.id());
+        }
+    }
+
+    const int idx = m_categoryCombo->findData(previousSelectedId);
+    if (idx >= 0) {
+        m_categoryCombo->setCurrentIndex(idx);
     }
 }
 
@@ -148,17 +162,18 @@ void TransactionDialog::setFieldsFromTransaction(const Transaction *transaction)
     m_dateEdit->setDate(transaction->date());
     m_valueSpinBox->setValue(transaction->value().toDouble());
 
-    // Categoria
-    const int catIdx = m_categoryCombo->findData(transaction->category().id());
-    if (catIdx >= 0) {
-        m_categoryCombo->setCurrentIndex(catIdx);
-    }
-
     // Tipo
     const auto type = transaction->type();
     const int typeIdx = m_typeCombo->findData(static_cast<int>(type));
     if (typeIdx >= 0) {
         m_typeCombo->setCurrentIndex(typeIdx);
+    }
+
+    // Atualiza as categorias para o tipo e seleciona a categoria da transação
+    populateCategories();
+    const int catIdx = m_categoryCombo->findData(transaction->category().id());
+    if (catIdx >= 0) {
+        m_categoryCombo->setCurrentIndex(catIdx);
     }
 
     if (type == TransactionType::InstallmentExpense) {
@@ -196,6 +211,8 @@ void TransactionDialog::onTypeChanged(int /*index*/) {
     const bool hasEnd = isRecurring && m_hasEndDateCombo->currentData().toBool();
     m_endDateLabel->setVisible(hasEnd);
     m_endDateEdit->setVisible(hasEnd);
+
+    populateCategories();
 }
 
 void TransactionDialog::onNewCategoryClicked() {
@@ -211,8 +228,12 @@ void TransactionDialog::onNewCategoryClicked() {
                                                QStringLiteral("Selecione a cor da categoria"));
     const QString colorHex = color.isValid() ? color.name() : QStringLiteral("#607D8B");
 
+    const auto txType = static_cast<TransactionType>(m_typeCombo->currentData().toInt());
+    const CategoryKind categoryKind =
+        (txType == TransactionType::Income) ? CategoryKind::Income : CategoryKind::Expense;
+
     try {
-        const Category newCat(name.trimmed(), colorHex);
+        const Category newCat(name.trimmed(), colorHex, categoryKind);
         m_ledger->addCategory(newCat);
         populateCategories();
         const int idx = m_categoryCombo->findData(newCat.id());
@@ -226,7 +247,6 @@ void TransactionDialog::onNewCategoryClicked() {
 
 void TransactionDialog::onAcceptClicked() {
     try {
-        // Tenta criar a transacao para validar todos os campos do dominio
         auto tx = createTransaction();
         if (tx) {
             accept();
@@ -258,7 +278,8 @@ std::unique_ptr<Transaction> TransactionDialog::createTransaction() const {
     const QDate date = m_dateEdit->date();
     const Money value = Money::fromReal(m_valueSpinBox->value());
     if (!value.isPositive()) {
-        throw ValidationError(QStringLiteral("O valor da transação deve ser estritamente maior que zero."));
+        throw ValidationError(
+            QStringLiteral("O valor da transação deve ser estritamente maior que zero."));
     }
 
     const auto type = static_cast<TransactionType>(m_typeCombo->currentData().toInt());

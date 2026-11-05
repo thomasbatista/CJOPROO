@@ -25,6 +25,7 @@ private slots:
 
     void testCategoryCreationAndValidation();
     void testCategoryJsonSerialization();
+    void testCategoryKindCompatibility();
     void testCategoryDefaults();
 
     void testValidationError();
@@ -58,7 +59,6 @@ void TestMoney::testFromReal() {
     const Money exact = Money::fromReal(15.75);
     QCOMPARE(exact.cents(), 1575);
 
-    // Arredondamento ao centavo mais proximo
     const Money roundedDown = Money::fromReal(10.554);
     QCOMPARE(roundedDown.cents(), 1055);
 
@@ -87,18 +87,11 @@ void TestMoney::testArithmeticOperators() {
 }
 
 void TestMoney::testMultiplicationRounding() {
-    const Money base(1000); // R$ 10,00
+    const Money base(1000);
 
-    // 1000 * 1.5 = 1500
     QCOMPARE((base * 1.5).cents(), 1500);
-
-    // Comutatividade
     QCOMPARE((1.5 * base).cents(), 1500);
-
-    // 1000 * 0.333333 = 333.333 -> arredonda para 333 centavos
     QCOMPARE((base * 0.333333).cents(), 333);
-
-    // 1000 * 0.336 = 336 centavos
     QCOMPARE((base * 0.336).cents(), 336);
 
     Money mutableMoney(200);
@@ -107,14 +100,13 @@ void TestMoney::testMultiplicationRounding() {
 }
 
 void TestMoney::testDivisionAndModulo() {
-    const Money total(10000); // R$ 100,00 em 3 parcelas
+    const Money total(10000);
     const Money installment = total / 3;
     const Money remainder = total % 3;
 
     QCOMPARE(installment.cents(), 3333);
     QCOMPARE(remainder.cents(), 1);
 
-    // Verifica que 2 parcelas normais + 1 absorvendo o resto somam o total exato
     const Money lastInstallment = installment + remainder;
     QCOMPARE(lastInstallment.cents(), 3334);
     QCOMPARE((installment * 2 + lastInstallment).cents(), 10000);
@@ -145,7 +137,7 @@ void TestMoney::testComparisonOperators() {
 }
 
 void TestMoney::testFormatPtBr() {
-    const Money positive(125050); // R$ 1.250,50
+    const Money positive(125050);
     const QString formatted = positive.formatPtBr();
 
     QVERIFY(!formatted.isEmpty());
@@ -155,30 +147,32 @@ void TestMoney::testFormatPtBr() {
 }
 
 void TestMoney::testCategoryCreationAndValidation() {
-    // Criacao valida com geracao de UUID
+    // Criação válida com geração de UUID e kind padrão (Expense)
     const Category cat1(QStringLiteral("Alimentação"), QStringLiteral("#E64A19"));
     QVERIFY(!cat1.id().isEmpty());
     QCOMPARE(cat1.name(), QStringLiteral("Alimentação"));
     QCOMPARE(cat1.colorHex(), QStringLiteral("#E64A19"));
+    QCOMPARE(cat1.kind(), CategoryKind::Expense);
 
-    // Criacao valida com id explicitado
-    const Category cat2(QStringLiteral("cat_transporte"), QStringLiteral("Transporte"),
-                        QStringLiteral("#1976D2"));
-    QCOMPARE(cat2.id(), QStringLiteral("cat_transporte"));
-    QCOMPARE(cat2.name(), QStringLiteral("Transporte"));
+    // Criação válida com id explicitado e kind Income
+    const Category cat2(QStringLiteral("cat_salario"), QStringLiteral("Salário"),
+                        QStringLiteral("#388E3C"), CategoryKind::Income);
+    QCOMPARE(cat2.id(), QStringLiteral("cat_salario"));
+    QCOMPARE(cat2.name(), QStringLiteral("Salário"));
+    QCOMPARE(cat2.kind(), CategoryKind::Income);
 
-    // Validacao: nome vazio deve lancar excecao
+    // Validação: nome vazio deve lançar exceção
     QVERIFY_EXCEPTION_THROWN(Category(QStringLiteral(""), QStringLiteral("#123456")),
                              ValidationError);
     QVERIFY_EXCEPTION_THROWN(Category(QStringLiteral("   "), QStringLiteral("#123456")),
                              ValidationError);
 
-    // Validacao: id vazio deve lancar excecao
+    // Validação: id vazio deve lançar exceção
     QVERIFY_EXCEPTION_THROWN(
         Category(QStringLiteral(""), QStringLiteral("Teste"), QStringLiteral("#123456")),
         ValidationError);
 
-    // Alteracao com setName
+    // Alteração com setName
     Category editable(QStringLiteral("Nome Antigo"));
     editable.setName(QStringLiteral("Nome Novo"));
     QCOMPARE(editable.name(), QStringLiteral("Nome Novo"));
@@ -186,23 +180,42 @@ void TestMoney::testCategoryCreationAndValidation() {
 }
 
 void TestMoney::testCategoryJsonSerialization() {
-    const Category original(QStringLiteral("cat_lazer"), QStringLiteral("Lazer"),
-                            QStringLiteral("#F57C00"));
+    const Category original(QStringLiteral("cat_salario"), QStringLiteral("Salário"),
+                            QStringLiteral("#388E3C"), CategoryKind::Income);
     const QJsonObject json = original.toJson();
 
-    QCOMPARE(json.value(QStringLiteral("id")).toString(), QStringLiteral("cat_lazer"));
-    QCOMPARE(json.value(QStringLiteral("name")).toString(), QStringLiteral("Lazer"));
-    QCOMPARE(json.value(QStringLiteral("colorHex")).toString(), QStringLiteral("#F57C00"));
+    QCOMPARE(json.value(QStringLiteral("id")).toString(), QStringLiteral("cat_salario"));
+    QCOMPARE(json.value(QStringLiteral("name")).toString(), QStringLiteral("Salário"));
+    QCOMPARE(json.value(QStringLiteral("colorHex")).toString(), QStringLiteral("#388E3C"));
+    QCOMPARE(json.value(QStringLiteral("kind")).toString(), QStringLiteral("Income"));
 
     const Category restored = Category::fromJson(json);
     QCOMPARE(restored.id(), original.id());
     QCOMPARE(restored.name(), original.name());
     QCOMPARE(restored.colorHex(), original.colorHex());
+    QCOMPARE(restored.kind(), original.kind());
     QVERIFY(restored == original);
 
-    // JSON invalido sem campos obrigatorios
+    // JSON inválido sem campos obrigatórios
     const QJsonObject invalidJson;
     QVERIFY_EXCEPTION_THROWN(Category::fromJson(invalidJson), ValidationError);
+}
+
+void TestMoney::testCategoryKindCompatibility() {
+    // Compatibilidade com arquivos antigos: sem campo "kind" assume Expense
+    QJsonObject legacyJson;
+    legacyJson[QStringLiteral("id")] = QStringLiteral("cat_legado");
+    legacyJson[QStringLiteral("name")] = QStringLiteral("Categoria Antiga");
+    legacyJson[QStringLiteral("colorHex")] = QStringLiteral("#123456");
+
+    const Category legacy = Category::fromJson(legacyJson);
+    QCOMPARE(legacy.kind(), CategoryKind::Expense);
+
+    // Ida e volta de Category com kind Expense
+    const Category expCat(QStringLiteral("cat_desp"), QStringLiteral("Despesa Teste"),
+                          QStringLiteral("#FF0000"), CategoryKind::Expense);
+    const Category restoredExp = Category::fromJson(expCat.toJson());
+    QCOMPARE(restoredExp.kind(), CategoryKind::Expense);
 }
 
 void TestMoney::testCategoryDefaults() {
@@ -210,11 +223,22 @@ void TestMoney::testCategoryDefaults() {
     QVERIFY(!defaults.empty());
     QVERIFY(defaults.size() >= 5);
 
+    int incomeCount = 0;
+    int expenseCount = 0;
+
     for (const auto &cat : defaults) {
         QVERIFY(!cat.id().isEmpty());
         QVERIFY(!cat.name().isEmpty());
         QVERIFY(!cat.colorHex().isEmpty());
+        if (cat.kind() == CategoryKind::Income) {
+            incomeCount++;
+        } else {
+            expenseCount++;
+        }
     }
+
+    QVERIFY(incomeCount >= 2); // Salário e Outras receitas
+    QVERIFY(expenseCount >= 5);
 }
 
 void TestMoney::testValidationError() {

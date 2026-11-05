@@ -6,10 +6,18 @@
 #include <vector>
 
 /**
+ * @brief Tipos possíveis de categoria no sistema.
+ */
+enum class CategoryKind {
+    Income,  ///< Categoria destinada a receitas
+    Expense  ///< Categoria destinada a despesas
+};
+
+/**
  * @brief Representa uma categoria para classificação de receitas e despesas.
  *
- * Possui identificador único, nome textual e uma cor associada em formato hexadecimal
- * para identificação visual em tabelas e gráficos.
+ * Possui identificador único, nome textual, cor hexadecimal e o tipo da categoria
+ * (Income ou Expense), restringindo associações indevidas como orçamentos em receitas.
  */
 class Category {
 public:
@@ -22,18 +30,22 @@ public:
      * @brief Construtor com geração automática de identificador UUID.
      * @param name Nome descritivo da categoria (obrigatório).
      * @param colorHex Código de cor hexadecimal (ex.: "#2196F3").
+     * @param kind Tipo da categoria (Expense por padrão).
      * @throws ValidationError se o nome for vazio.
      */
-    explicit Category(const QString &name, const QString &colorHex = QStringLiteral("#607D8B"));
+    explicit Category(const QString &name, const QString &colorHex = QStringLiteral("#607D8B"),
+                      CategoryKind kind = CategoryKind::Expense);
 
     /**
      * @brief Construtor completo com identificador pré-existente.
      * @param id Identificador único da categoria.
      * @param name Nome descritivo da categoria (obrigatório).
      * @param colorHex Código de cor hexadecimal.
+     * @param kind Tipo da categoria (Expense por padrão).
      * @throws ValidationError se o nome for vazio ou se o id for vazio.
      */
-    Category(const QString &id, const QString &name, const QString &colorHex);
+    Category(const QString &id, const QString &name, const QString &colorHex,
+             CategoryKind kind = CategoryKind::Expense);
 
     /**
      * @brief Retorna o identificador único da categoria.
@@ -67,15 +79,27 @@ public:
     void setColorHex(const QString &colorHex);
 
     /**
+     * @brief Retorna o tipo da categoria (Income ou Expense).
+     * @return CategoryKind correspondente.
+     */
+    CategoryKind kind() const;
+
+    /**
+     * @brief Define o tipo da categoria.
+     * @param kind Novo tipo (Income ou Expense).
+     */
+    void setKind(CategoryKind kind);
+
+    /**
      * @brief Serializa os dados da categoria em um QJsonObject.
-     * @return Objeto JSON contendo id, name e colorHex.
+     * @return Objeto JSON contendo id, name, colorHex e kind.
      */
     QJsonObject toJson() const;
 
     /**
      * @brief Desserializa uma categoria a partir de um QJsonObject.
      * @param json Objeto JSON de origem.
-     * @return Instância de Category reconstituída.
+     * @return Instância de Category reconstituída (assume Expense se kind estiver ausente).
      * @throws ValidationError se o JSON estiver incompleto ou inválido.
      */
     static Category fromJson(const QJsonObject &json);
@@ -95,4 +119,5 @@ private:
     QString m_id;
     QString m_name;
     QString m_colorHex{QStringLiteral("#607D8B")};
+    CategoryKind m_kind{CategoryKind::Expense};
 };

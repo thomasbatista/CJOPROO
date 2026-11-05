@@ -41,9 +41,9 @@ private:
 
 void TestTransactionTableModel::initTestCase() {
     m_catSal = Category(QStringLiteral("cat_salario"), QStringLiteral("Salário"),
-                        QStringLiteral("#388E3C"));
+                        QStringLiteral("#388E3C"), CategoryKind::Income);
     m_catAlim = Category(QStringLiteral("cat_alim"), QStringLiteral("Alimentação"),
-                         QStringLiteral("#E64A19"));
+                         QStringLiteral("#E64A19"), CategoryKind::Expense);
 
     m_ledger = new Ledger(this);
 

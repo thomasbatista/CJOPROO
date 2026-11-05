@@ -61,14 +61,14 @@ bool JsonRepository::save(const Ledger &ledger, const QString &path) {
     }
     root[QStringLiteral("categories")] = categoriesArray;
 
-    // Serializa orcamentos
+    // Serializa orçamentos
     QJsonArray budgetsArray;
     for (const auto &budget : ledger.budgets()) {
         budgetsArray.append(budget.toJson());
     }
     root[QStringLiteral("budgets")] = budgetsArray;
 
-    // Serializa transacoes
+    // Serializa transações
     QJsonArray transactionsArray;
     for (const auto *tx : ledger.transactions()) {
         if (tx) {
@@ -88,8 +88,9 @@ bool JsonRepository::save(const Ledger &ledger, const QString &path) {
     }
 
     if (!file.commit()) {
-        m_lastError = QStringLiteral("Erro ao consolidar arquivo de gravação com QSaveFile: %1")
-                          .arg(file.errorString());
+        m_lastError =
+            QStringLiteral("Erro ao consolidar arquivo de gravação com QSaveFile: %1")
+                .arg(file.errorString());
         return false;
     }
 
@@ -100,7 +101,7 @@ bool JsonRepository::save(const Ledger &ledger, const QString &path) {
 bool JsonRepository::load(Ledger &ledger, const QString &path) {
     QFile file(path);
 
-    // Primeiro uso da aplicacao: o arquivo ainda nao existe
+    // Primeiro uso da aplicação: o arquivo ainda não existe
     if (!file.exists()) {
         ledger.loadState(Category::defaultCategories(), {}, {});
         m_lastError.clear();
@@ -178,7 +179,7 @@ bool JsonRepository::load(Ledger &ledger, const QString &path) {
         return false;
     }
 
-    // Atualiza o Ledger de forma atomica com um unico changed() ao final
+    // Atualiza o Ledger de forma atômica (orçamentos de categorias Income são descartados em loadState)
     try {
         ledger.loadState(std::move(parsedCategories), std::move(parsedBudgets),
                          std::move(parsedTransactions));

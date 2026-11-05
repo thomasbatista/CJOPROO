@@ -1,8 +1,4 @@
 #include "ui/BudgetDialog.h"
-#include "model/Budget.h"
-#include "model/Ledger.h"
-#include "model/Money.h"
-#include "model/ValidationError.h"
 
 #include <QCheckBox>
 #include <QDialogButtonBox>
@@ -15,6 +11,11 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
+#include "model/Budget.h"
+#include "model/Ledger.h"
+#include "model/Money.h"
+#include "model/ValidationError.h"
+
 BudgetDialog::BudgetDialog(Ledger *ledger, QWidget *parent)
     : QDialog(parent), m_ledger(ledger) {
     setWindowTitle(QStringLiteral("Gerenciar Orçamentos Mensais"));
@@ -26,13 +27,12 @@ void BudgetDialog::setupUi() {
     auto *mainLayout = new QVBoxLayout(this);
 
     auto *infoLabel =
-        new QLabel(QStringLiteral("Defina o limite mensal em reais (R$) para cada categoria.\n"
+        new QLabel(QStringLiteral("Defina o limite mensal em reais (R$) para cada categoria de despesa.\n"
                                   "Desmarque ou defina R$ 0,00 para remover o orçamento."),
                    this);
     infoLabel->setStyleSheet(QStringLiteral("color: #555555;"));
     mainLayout->addWidget(infoLabel);
 
-    // Area rolável para acomodar muitas categorias confortavelmente
     auto *scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
 
@@ -45,6 +45,11 @@ void BudgetDialog::setupUi() {
         m_rows.reserve(categories.size());
 
         for (const auto &cat : categories) {
+            // Orçamentos só se aplicam a categorias do tipo Expense
+            if (cat.kind() != CategoryKind::Expense) {
+                continue;
+            }
+
             auto *check = new QCheckBox(cat.name(), containerWidget);
 
             auto *spin = new QDoubleSpinBox(containerWidget);
@@ -53,7 +58,6 @@ void BudgetDialog::setupUi() {
             spin->setPrefix(QStringLiteral("R$ "));
             spin->setSingleStep(50.0);
 
-            // Verifica se ja ha orcamento cadastrado
             auto existingBudget = m_ledger->budgetForCategory(cat.id());
             if (existingBudget.has_value() && existingBudget->monthlyLimit().cents() > 0) {
                 check->setChecked(true);
@@ -97,7 +101,6 @@ void BudgetDialog::onSaveClicked() {
             const bool isActive = row.enableCheck->isChecked();
             const double val = row.limitSpinBox->value();
 
-            // Conversao para centavos com qRound64 para garantir exatidao sem truncamento
             const qint64 cents = qRound64(val * 100.0);
 
             if (isActive && cents > 0) {

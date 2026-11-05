@@ -29,6 +29,7 @@ private slots:
     void testBudgetThresholdsAndDivisionByZero();
     void testMonthlyCalculationsWithAllFourTypes();
     void testBudgetStatusIntegration();
+    void testBudgetRejectsIncomeCategory();
     void testBatchLoadState();
 };
 
@@ -296,6 +297,28 @@ void TestLedger::testBudgetStatusIntegration() {
 
     // Categoria sem orcamento configurado retorna std::nullopt
     QVERIFY(!ledger.budgetStatus(QStringLiteral("categoria_inexistente"), nov).has_value());
+}
+
+void TestLedger::testBudgetRejectsIncomeCategory() {
+    Ledger ledger;
+    const Category incomeCat(QStringLiteral("cat_freela"), QStringLiteral("Freelance"),
+                             QStringLiteral("#388E3C"), CategoryKind::Income);
+    ledger.addCategory(incomeCat);
+
+    // Tentar definir orçamento para categoria do tipo Income deve lançar ValidationError
+    QVERIFY_EXCEPTION_THROWN(ledger.setBudget(Budget(incomeCat, Money::fromReal(1000.00))),
+                             ValidationError);
+
+    // loadState deve descartar silenciosamente orçamentos associados a Income
+    const Category expCat(QStringLiteral("cat_merc"), QStringLiteral("Mercado"),
+                          QStringLiteral("#E64A19"), CategoryKind::Expense);
+    std::vector<Category> cats = {incomeCat, expCat};
+    std::vector<Budget> budgets = {Budget(incomeCat, Money::fromReal(500.00)),
+                                   Budget(expCat, Money::fromReal(800.00))};
+
+    ledger.loadState(std::move(cats), std::move(budgets), {});
+    QCOMPARE(ledger.budgets().size(), 1);
+    QCOMPARE(ledger.budgets()[0].category().id(), expCat.id());
 }
 
 void TestLedger::testBatchLoadState() {

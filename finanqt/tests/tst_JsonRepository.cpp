@@ -39,9 +39,9 @@ void TestJsonRepository::testRoundtripWithAllEntities() {
     // Define as categorias e monta o estado inicial exato via loadState,
     // sem herdar as categorias padrao do construtor do Ledger
     const Category catTech(QStringLiteral("cat_tech"), QStringLiteral("Tecnologia"),
-                           QStringLiteral("#00BCD4"));
+                           QStringLiteral("#00BCD4"), CategoryKind::Income);
     const Category catMerc(QStringLiteral("cat_merc"), QStringLiteral("Mercado"),
-                           QStringLiteral("#E64A19"));
+                           QStringLiteral("#E64A19"), CategoryKind::Expense);
 
     std::vector<Category> initialCats = {catTech, catMerc};
     std::vector<Budget> initialBudgets = {Budget(catMerc, Money::fromReal(800.00))};
@@ -90,6 +90,13 @@ void TestJsonRepository::testRoundtripWithAllEntities() {
     QVERIFY(restoredCatTech.has_value());
     QCOMPARE(restoredCatTech->name(), QStringLiteral("Tecnologia"));
     QCOMPARE(restoredCatTech->colorHex(), QStringLiteral("#00BCD4"));
+    QCOMPARE(restoredCatTech->kind(), CategoryKind::Income);
+
+    auto restoredCatMerc = restoredLedger.findCategoryById(QStringLiteral("cat_merc"));
+    QVERIFY(restoredCatMerc.has_value());
+    QCOMPARE(restoredCatMerc->name(), QStringLiteral("Mercado"));
+    QCOMPARE(restoredCatMerc->colorHex(), QStringLiteral("#E64A19"));
+    QCOMPARE(restoredCatMerc->kind(), CategoryKind::Expense);
 
     // Valida orcamento
     auto restoredBudget = restoredLedger.budgetForCategory(QStringLiteral("cat_merc"));
