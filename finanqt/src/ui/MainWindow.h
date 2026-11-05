@@ -2,22 +2,24 @@
 
 #include <QDate>
 #include <QMainWindow>
-
 #include <memory>
 
 #include "model/Ledger.h"
 #include "persistence/IRepository.h"
 
-class QTableView;
+class QComboBox;
 class QLabel;
+class QLineEdit;
+class QSortFilterProxyModel;
+class QTableView;
 class TransactionTableModel;
 
 /**
  * @brief Janela principal da aplicação FinanQt.
  *
- * Possui o Ledger e o repositório de persistência; coordena a carga inicial
- * dos dados, o salvamento automático reativo (via signal changed do Ledger)
- * e a exibição da tabela de transações do mês corrente.
+ * Coordena os botões de ação (Adicionar, Editar e Remover transações), o painel de
+ * resumo mensal (receitas, despesas e saldo), a navegação entre meses e a exibição
+ * da tabela filtrada e ordenada por QSortFilterProxyModel.
  */
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -41,39 +43,49 @@ protected:
      */
     void closeEvent(QCloseEvent *event) override;
 
+private slots:
+    void onAddTransaction();
+    void onEditTransaction();
+    void onRemoveTransaction();
+    void onTableDoubleClicked(const QModelIndex &index);
+    void onPreviousMonth();
+    void onNextMonth();
+    void onCurrentMonth();
+    void onCategoryFilterChanged(int index);
+    void onSearchTextChanged(const QString &text);
+    void onLedgerChanged();
+
 private:
-    /**
-     * @brief Monta os widgets, layouts e o QTableView da interface principal.
-     */
     void setupUi();
-
-    /**
-     * @brief Conecta os sinais e slots da janela principal.
-     */
     void setupConnections();
+    void updateMonthView();
+    void updateSummaryPanel();
+    void populateCategoryFilter();
 
-    /**
-     * @brief Carrega os dados do repositório para o Ledger.
-     *
-     * Exibe QMessageBox de erro se o carregamento falhar e NÃO sobrescreve o arquivo.
-     * @return true se carregou com sucesso ou se era primeiro uso; false em caso de falha.
-     */
     bool loadData();
-
-    /**
-     * @brief Salva o estado atual do Ledger no repositório.
-     *
-     * Exibe QMessageBox de aviso em caso de falha de gravação.
-     */
     void saveData();
+
+    QString selectedTransactionId() const;
 
     std::unique_ptr<Ledger> m_ledger;
     std::unique_ptr<IRepository> m_repository;
 
     TransactionTableModel *m_tableModel{nullptr};
+    QSortFilterProxyModel *m_proxyModel{nullptr};
     QTableView *m_tableView{nullptr};
-    QLabel *m_monthLabel{nullptr};
 
+    // Navegacao de mes
+    QLabel *m_monthLabel{nullptr};
     QDate m_currentMonth;
+
+    // Painel mensal
+    QLabel *m_incomeValueLabel{nullptr};
+    QLabel *m_expenseValueLabel{nullptr};
+    QLabel *m_balanceValueLabel{nullptr};
+
+    // Filtros e busca
+    QComboBox *m_categoryFilterCombo{nullptr};
+    QLineEdit *m_searchEdit{nullptr};
+
     bool m_loadFailed{false};
 };

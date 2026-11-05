@@ -59,6 +59,8 @@ add_executable(FinanQt
     src/main.cpp
     src/ui/MainWindow.h
     src/ui/MainWindow.cpp
+    src/ui/TransactionDialog.h
+    src/ui/TransactionDialog.cpp
 )
 
 target_include_directories(FinanQt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
