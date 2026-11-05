@@ -3,8 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(FinanQt
     VERSION 1.0.0
     DESCRIPTION "Gestor de Despesas Pessoais em C++ e Qt 6"
-    LANGUAGES CXX
-)
+    LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -48,16 +47,13 @@ add_library(FinanQtCore STATIC
     src/persistence/IRepository.h
     src/persistence/JsonRepository.h
     src/persistence/JsonRepository.cpp
+    src/ui/TransactionTableModel.h
+    src/ui/TransactionTableModel.cpp
 )
 
-target_include_directories(FinanQtCore PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
+target_include_directories(FinanQtCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-target_link_libraries(FinanQtCore PUBLIC
-    Qt6::Core
-    Qt6::Gui
-)
+target_link_libraries(FinanQtCore PUBLIC Qt6::Core Qt6::Gui)
 
 add_executable(FinanQt
     src/main.cpp
@@ -65,13 +61,8 @@ add_executable(FinanQt
     src/ui/MainWindow.cpp
 )
 
-target_include_directories(FinanQt PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
+target_include_directories(FinanQt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-target_link_libraries(FinanQt PRIVATE
-    FinanQtCore
-    Qt6::Widgets
-)
+target_link_libraries(FinanQt PRIVATE FinanQtCore Qt6::Widgets)
 
 add_subdirectory(tests)
