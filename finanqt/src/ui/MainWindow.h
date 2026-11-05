@@ -8,18 +8,20 @@
 #include "persistence/IRepository.h"
 
 class QComboBox;
+class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QSortFilterProxyModel;
 class QTableView;
+class QVBoxLayout;
 class TransactionTableModel;
 
 /**
  * @brief Janela principal da aplicação FinanQt.
  *
- * Coordena os botões de ação (Adicionar, Editar e Remover transações), o painel de
- * resumo mensal (receitas, despesas e saldo), a navegação entre meses e a exibição
- * da tabela filtrada e ordenada por QSortFilterProxyModel.
+ * Coordena os botões de ação (Adicionar, Editar, Remover e Orçamentos), o painel de
+ * resumo mensal (receitas, despesas e saldo), a navegação entre meses, a listagem de
+ * orçamentos com barras de progresso estilizadas por status e a tabela filtrada.
  */
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -47,6 +49,7 @@ private slots:
     void onAddTransaction();
     void onEditTransaction();
     void onRemoveTransaction();
+    void onManageBudgets();
     void onTableDoubleClicked(const QModelIndex &index);
     void onPreviousMonth();
     void onNextMonth();
@@ -60,6 +63,7 @@ private:
     void setupConnections();
     void updateMonthView();
     void updateSummaryPanel();
+    void updateBudgetsPanel();
     void populateCategoryFilter();
 
     bool loadData();
@@ -82,6 +86,14 @@ private:
     QLabel *m_incomeValueLabel{nullptr};
     QLabel *m_expenseValueLabel{nullptr};
     QLabel *m_balanceValueLabel{nullptr};
+
+    // Painel de orcamentos
+    QGroupBox *m_budgetGroupBox{nullptr};
+    QVBoxLayout *m_budgetListLayout{nullptr};
+
+    // Area reservada para futuro grafico
+    QGroupBox *m_chartGroupBox{nullptr};
+    QVBoxLayout *m_chartLayout{nullptr};
 
     // Filtros e busca
     QComboBox *m_categoryFilterCombo{nullptr};
