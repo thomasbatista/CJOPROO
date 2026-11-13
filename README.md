@@ -9,15 +9,20 @@ Repositório dos trabalhos finais da disciplina de Programação Orientada a Obj
 
 | Projeto | Descrição | Pasta | Relatório |
 |---|---|---|---|
-| FinanQt | Sistema de gestão de despesas pessoais orientado a objetos, com interface gráfica, em C++ e Qt | [finanqt](finanqt/) | Projeto Final - Qt Creator.pdf |
+| FinanQt | Sistema de gestão de despesas pessoais orientado a objetos, com interface gráfica, em C++ e Qt | [finanqt](finanqt/) | [Projeto Final - Qt Creator.pdf](Projeto%20Final%20-%20Qt%20Creator.pdf) |
 
 ## Estrutura do repositório
 
 ```text
-cjoproo/
+CJOPROO/
 ├── README.md
 ├── .gitignore
+├── Projeto Final - Qt Creator.pdf
 └── finanqt/
+    ├── CMakeLists.txt
+    ├── README.md
+    ├── src/
+    └── tests/
 ```
 
 ## Como compilar o FinanQt
