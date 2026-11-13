@@ -1,6 +1,8 @@
 #ifndef LASTWICK_ENTITIES_LANTERN_H
 #define LASTWICK_ENTITIES_LANTERN_H
 
+#include "core/GameConfig.h"
+
 namespace lastwick {
 
 /**
@@ -12,14 +14,16 @@ namespace lastwick {
 class Lantern {
 public:
     /**
-     * @brief Construtor que inicializa a lanterna com tanque cheio.
+     * @brief Construtor que inicializa a lanterna com valores padronizados de configuração.
      * @param initialFuel Quantidade inicial de combustível (0 a 100).
      * @param burnRate Taxa de consumo de combustível por segundo.
      * @param minRadius Raio mínimo de alcance luminoso em pixels.
      * @param maxRadius Raio máximo de alcance com combustível pleno.
      */
-    Lantern(float initialFuel = 100.0f, float burnRate = 1.0f, float minRadius = 90.0f,
-            float maxRadius = 290.0f);
+    Lantern(float initialFuel = GameConfig::kLanternInitialFuel,
+            float burnRate = GameConfig::kLanternBurnRate,
+            float minRadius = GameConfig::kLanternMinRadius,
+            float maxRadius = GameConfig::kLanternMaxRadius);
 
     /**
      * @brief Atualiza a queima de óleo e os temporizadores do clarão.

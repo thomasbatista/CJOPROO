@@ -3,20 +3,29 @@
 #include <algorithm>
 #include <cmath>
 
+#include "core/GameConfig.h"
+
 namespace lastwick {
 
 Player::Player(Vector2 position, int lives, float speed)
     : Entity(position),
-      m_lantern(100.0f, 1.0f, 95.0f, 290.0f),
+      m_lantern(GameConfig::kLanternInitialFuel, GameConfig::kLanternBurnRate,
+                GameConfig::kLanternMinRadius, GameConfig::kLanternMaxRadius),
       m_lives(lives),
       m_maxLives(lives),
       m_speed(speed),
-      m_collisionRadius(16.0f),
+      m_collisionRadius(GameConfig::kPlayerCollisionRadius),
+      m_invulnerabilityTimer(0.0f),
       m_facingDirection{0.0f, 1.0f},
-      m_minBound{32.0f, 32.0f},
-      m_maxBound{2368.0f, 1768.0f} {}
+      m_minBound{GameConfig::kMapBoundaryMargin, GameConfig::kMapBoundaryMargin},
+      m_maxBound{GameConfig::kMapWidth - GameConfig::kMapBoundaryMargin,
+                 GameConfig::kMapHeight - GameConfig::kMapBoundaryMargin} {}
 
 void Player::update(float deltaTime) {
+    if (m_invulnerabilityTimer > 0.0f) {
+        m_invulnerabilityTimer = std::max(0.0f, m_invulnerabilityTimer - deltaTime);
+    }
+
     float moveX = 0.0f;
     float moveY = 0.0f;
 
@@ -55,6 +64,15 @@ void Player::update(float deltaTime) {
 }
 
 void Player::draw() const {
+    // Efeito piscante visual durante o tempo de invulnerabilidade
+    if (m_invulnerabilityTimer > 0.0f) {
+        float blinkCycle =
+            std::sin(m_invulnerabilityTimer * GameConfig::kPlayerBlinkFrequency * 6.2831853f);
+        if (blinkCycle < 0.0f) {
+            return;
+        }
+    }
+
     // Sombra suave sob os pés do guardião
     DrawEllipse(static_cast<int>(m_position.x), static_cast<int>(m_position.y + 12.0f), 18.0f, 8.0f,
                 Color{0, 0, 0, 110});
@@ -72,7 +90,6 @@ void Player::draw() const {
 
     // Posição da mão segurando a lanterna à frente ou na lateral
     Vector2 lanternOffset{m_facingDirection.x * 16.0f, m_facingDirection.y * 16.0f};
-    // Leve deslocamento lateral perpendicular para parecer que está na mão direita
     Vector2 handPerpendicular{-m_facingDirection.y * 8.0f, m_facingDirection.x * 8.0f};
     Vector2 lanternPos{m_position.x + lanternOffset.x + handPerpendicular.x,
                        m_position.y + lanternOffset.y + handPerpendicular.y};
@@ -100,6 +117,23 @@ void Player::setMapBounds(float minX, float minY, float maxX, float maxY) {
 
 void Player::takeDamage(int amount) {
     m_lives = std::max(0, m_lives - amount);
+    m_invulnerabilityTimer = GameConfig::kPlayerInvulnerabilityDuration;
+}
+
+bool Player::hit(int damage) {
+    if (isInvulnerable() || m_lives <= 0) {
+        return false;
+    }
+    takeDamage(damage);
+    return true;
+}
+
+bool Player::isInvulnerable() const {
+    return m_invulnerabilityTimer > 0.0f;
+}
+
+float Player::getCollisionRadius() const {
+    return m_collisionRadius;
 }
 
 int Player::getLives() const {

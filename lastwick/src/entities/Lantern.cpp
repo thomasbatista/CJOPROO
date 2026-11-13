@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "core/GameConfig.h"
+
 namespace lastwick {
 
 Lantern::Lantern(float initialFuel, float burnRate, float minRadius, float maxRadius)
@@ -9,10 +11,10 @@ Lantern::Lantern(float initialFuel, float burnRate, float minRadius, float maxRa
       m_burnRate(burnRate),
       m_minRadius(minRadius),
       m_maxRadius(maxRadius),
-      m_flashCost(12.0f),
-      m_flashCooldownDuration(3.5f),
+      m_flashCost(GameConfig::kFlareCost),
+      m_flashCooldownDuration(GameConfig::kFlareCooldown),
       m_flashCooldownTimer(0.0f),
-      m_flashActiveDuration(0.45f),
+      m_flashActiveDuration(GameConfig::kFlareVisualDuration),
       m_flashActiveTimer(0.0f),
       m_flashRadiusBonus(180.0f) {}
 

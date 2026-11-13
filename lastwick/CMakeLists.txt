@@ -22,6 +22,9 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(LastWick
     src/main.cpp
+    src/core/GameConfig.h
+    src/core/EventBus.h
+    src/core/EventBus.cpp
     src/core/Scene.h
     src/core/SceneManager.h
     src/core/SceneManager.cpp
@@ -33,7 +36,18 @@ add_executable(LastWick
     src/entities/Player.h
     src/entities/Player.cpp
     src/entities/Enemy.h
+    src/entities/Enemy.cpp
+    src/entities/Crawler.h
+    src/entities/Crawler.cpp
+    src/entities/Wisp.h
+    src/entities/Wisp.cpp
+    src/entities/Giant.h
+    src/entities/Giant.cpp
+    src/entities/EnemySpawner.h
+    src/entities/EnemySpawner.cpp
     src/entities/Pickup.h
+    src/scenes/HUD.h
+    src/scenes/HUD.cpp
     src/scenes/MenuScene.h
     src/scenes/MenuScene.cpp
     src/scenes/GameScene.h

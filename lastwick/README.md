@@ -4,26 +4,36 @@
 
 ## Descricao e Conceito
 
-Em uma regiao ficticia envolta por brumas e nevoa perene, o ultimo guardiao de uma torre ancestral carrega a unica lanterna funcional e precisa manter seu pavio aceso durante tres noites sucessivas (90 segundos cada).
+Em uma regiao ficticia envolta por brumas e nevoa perene, o ultimo guardiao de uma torre ancestral carrega a unica lanterna funcional e precisa manter seu pavio aceso durante noites de nevoa densa (90 segundos de sobrevivencia por noite).
 
-O alcance visual e a seguranca do guardiao dependem diretamente do combustivel (oleo) da lanterna, que queima gradativamente. Fora da iluminacao, sombras se deslocam com agilidade crescente. Ao penetrarem o halo de luz, as entidades sombrias sofrem exposicao luminosa progressiva ate se dissiparem. Em momentos criticos, o guardiao pode liberar um Clarao — uma detonacao concentrada de luz que afasta e consome as sombras ao redor ao custo de uma fracao de combustivel e sujeito a um tempo de recarga. O jogador inicia com 3 vidas.
+O alcance visual e a seguranca do guardiao dependem diretamente do combustivel (oleo) da lanterna, que queima gradativamente. Fora da iluminacao, sombras se deslocam com agilidade multiplicada por 1.6. Ao penetrarem o halo de luz, as entidades sombrias sofrem exposicao luminosa progressiva ate se dissiparem. Em momentos criticos, o guardiao pode liberar um Clarao — uma detonacao concentrada de luz que atinge 1.8x o raio da lanterna e aplica exposicao extra a todos os inimigos no raio, consumindo 25 de combustivel com recarga de 6 segundos. O jogador inicia com 3 vidas e recebe uma janela de invulnerabilidade de 1.5 segundos ao sofrer dano.
+
+## Variedade de Inimigos
+
+- **Crawler**: Criatura insetoide sombria que persegue o guardiao em linha reta (velocidade 110, morre com 1.0 s de exposicao a luz, causa 1 ponto de dano de contato).
+- **Wisp**: Espectro agil que avanca em zigue-zague senoidal (velocidade 170, dissipa-se com 0.5 s de exposicao, causa 1 ponto de dano de contato).
+- **Giant**: Colosso resistente e macico (velocidade 60, raio amplo de colisao, requer 3.0 s de exposicao, causa 2 pontos de dano de contato).
+
+Os corpos das criaturas permanecem ocultos sob a mascara de escuridao, revelando-se apenas sob a luz da lanterna, enquanto seus olhos avermelhados brilham diretamente atraves das sombras para sinalizar a aproximacao.
 
 ## Controles
 
 - **W, A, S, D** ou **Setas do Teclado**: Movimentacao suave do guardiao (com normalizacao de diagonais)
-- **Barra de Espaco**: Acionamento do Clarao da lanterna (consome combustivel e possui recarga)
+- **Barra de Espaco**: Acionamento do Clarao da lanterna (consome 25 de oleo e possui recarga de 6 s)
 - **ESC**: Retorno ao menu principal ou saida da aplicacao
 - **G**: Atalho de demonstracao para transicao rapida a tela de fim de jogo
 
 ## Arquitetura de Software e Orientacao a Objetos
 
-A estrutura do projeto foi concebida sob principios rigorosos de Orientacao a Objetos:
+A estrutura do projeto adota padroes de projeto consolidados:
 
-- **Abstracao e Polimorfismo de Entidades**: A classe abstrata `Entity` estabelece a interface comum (`update` e `draw`) e o gerenciamento de transformacao espacial. As classes `Player`, `Enemy` (abstrata) e `Pickup` (abstrata) estendem essa hierarquia basica.
-- **Composicao**: O `Player` compoe uma instancia dedicada de `Lantern`, responsavel pelo calculo dinamicamente parametrizado do raio luminoso, queima de oleo e logica do clarao.
-- **Padrao de Projeto State (Cenas)**: A interface `Scene` define o contrato para telas e estados do jogo. O `SceneManager` atua como contexto, intermediando transicoes entre `MenuScene`, `GameScene` e `GameOverScene` sem acoplamento direto.
-- **Gerenciamento Seguro de Recursos (RAII)**: Encapsulamento dos recursos do raylib (como `RenderTexture2D`, fontes e subsistema de audio) em classes RAII que garantem alocacao estrita e descarregamento automatico de VRAM/RAM.
-- **Iluminacao Dinamica 2D**: Criacao de mascara de escuridao renderizada em uma `RenderTexture2D` com degradê suave e combinada via multiplicacao cromatica (`BLEND_MULTIPLIED`).
+- **Abstracao e Polimorfismo de Entidades**: A classe abstrata `Entity` estabelece a base para coordenadas e atualizacao. `Enemy` estende `Entity` com metodos virtuais para perseguicao, acumulo de exposicao e dano de contato, servindo de base para `Crawler`, `Wisp` e `Giant`.
+- **Factory Method (EnemySpawner)**: Centraliza a logica de instanciacao das criaturas hostis atraves do metodo `createEnemy(EnemyType, Vector2)`, controlando taxas de surgimento fora do campo de visao da camera e respeitando o limite maximo de entidades ativas.
+- **Padrao Observer (EventBus)**: Barramento central desacoplado que notifica ouvintes sobre eventos do jogo (`EnemyKilled`, `PlayerHit`, `FlareUsed`, `FuelEmpty`). O componente `HUD` inscreve-se no barramento para contabilizar a pontuacao (10 pontos por baixa).
+- **Padrao State (Cenas)**: A interface `Scene` e o `SceneManager` coordenam o fluxo entre `MenuScene`, `GameScene` e `GameOverScene`.
+- **Composicao**: O `Player` compoe uma instancia dedicada de `Lantern`, responsavel pela gestao do oleo, raio visual e recarga do clarao.
+- **Centralizacao de Parametros (GameConfig)**: Todas as constantes de balanceamento e configuracao estao isoladas em `GameConfig.h` com identificadores `constexpr`.
+- **Gerenciamento Seguro de Recursos (RAII)**: Encapsulamento de recursos do raylib (`RenderTextureWrapper`, `AudioDeviceGuard`, `SoundWrapper`, `FontWrapper`) assegurando liberacao automatica de memoria de video e recursos do sistema.
 
 ## Estrutura de Diretorios
 
@@ -35,27 +45,41 @@ lastwick/
 ├── assets/               # Recursos de midia externos do jogo
 └── src/
     ├── main.cpp          # Ponto de entrada, configuracao da janela e laco principal
-    ├── core/             # Nucleo da aplicacao, gerenciador de cenas e recursos RAII
+    ├── core/             # Nucleo da aplicacao, configuracoes, eventos e cenas
+    │   ├── EventBus.h
+    │   ├── EventBus.cpp
+    │   ├── GameConfig.h
+    │   ├── RaylibResource.h
     │   ├── Scene.h
     │   ├── SceneManager.h
-    │   ├── SceneManager.cpp
-    │   └── RaylibResource.h
-    ├── entities/         # Hierarquia de entidades do jogo e componentes
+    │   └── SceneManager.cpp
+    ├── entities/         # Entidades, componentes e gerador de inimigos
+    │   ├── Crawler.h
+    │   ├── Crawler.cpp
+    │   ├── Enemy.h
+    │   ├── Enemy.cpp
+    │   ├── EnemySpawner.h
+    │   ├── EnemySpawner.cpp
     │   ├── Entity.h
     │   ├── Entity.cpp
+    │   ├── Giant.h
+    │   ├── Giant.cpp
     │   ├── Lantern.h
     │   ├── Lantern.cpp
+    │   ├── Pickup.h
     │   ├── Player.h
     │   ├── Player.cpp
-    │   ├── Enemy.h
-    │   └── Pickup.h
-    └── scenes/           # Telas e estados do jogo
-        ├── MenuScene.h
-        ├── MenuScene.cpp
+    │   ├── Wisp.h
+    │   └── Wisp.cpp
+    └── scenes/           # Telas de jogo e interface
+        ├── GameOverScene.h
+        ├── GameOverScene.cpp
         ├── GameScene.h
         ├── GameScene.cpp
-        ├── GameOverScene.h
-        └── GameOverScene.cpp
+        ├── HUD.h
+        ├── HUD.cpp
+        ├── MenuScene.h
+        └── MenuScene.cpp
 ```
 
 ## Como Compilar

@@ -3,10 +3,14 @@
 
 #include <vector>
 
+#include "core/EventBus.h"
+#include "core/GameConfig.h"
 #include "core/RaylibResource.h"
 #include "core/Scene.h"
+#include "entities/EnemySpawner.h"
 #include "entities/Player.h"
 #include "raylib.h"
+#include "scenes/HUD.h"
 
 namespace lastwick {
 
@@ -24,9 +28,8 @@ struct DeadTree {
 /**
  * @brief Cena principal de jogabilidade do Last Wick.
  *
- * Gerencia o guardião, a câmera dinâmica 2D, o mapa com limites expandidos,
- * a renderização procedural do solo e vegetação morta, a máscara de iluminação
- * dinâmica via RenderTexture e os elementos de interface de sobrevivência.
+ * Atua como orquestrador geral: delega a simulação dos inimigos ao EnemySpawner,
+ * a exibição de interface ao HUD, e gerencia o jogador, a câmera e a iluminação.
  */
 class GameScene : public Scene {
 public:
@@ -42,42 +45,26 @@ public:
     virtual ~GameScene() = default;
 
     /**
-     * @brief Inicializa o jogador, câmera, textura de luz e árvores do cenário.
+     * @brief Inicializa o jogador, câmera, textura de luz, árvores e subsistemas.
      */
     void init() override;
 
     /**
-     * @brief Atualiza a física do jogador, câmera e temporizador da noite.
+     * @brief Atualiza a física do jogador, câmera, spawner e temporizador da noite.
      * @param deltaTime Intervalo de tempo decorrido desde o último quadro em segundos.
      */
     void update(float deltaTime) override;
 
     /**
-     * @brief Renderiza o mundo do jogo, a camada de iluminação e a interface (HUD).
+     * @brief Renderiza o mundo do jogo, a camada de iluminação, os olhos das criaturas e o HUD.
      */
     void draw() override;
 
 private:
-    /**
-     * @brief Renderiza o terreno, lajotas antigas e árvores mortas no espaço do mundo.
-     */
     void drawMap() const;
-
-    /**
-     * @brief Renderiza uma árvore seca específica através de linhas e polígonos.
-     * @param tree Dados de posição e escala da árvore.
-     */
     void drawDeadTree(const DeadTree& tree) const;
-
-    /**
-     * @brief Atualiza e desenha a textura de máscara de iluminação da lanterna.
-     */
     void drawLightingMask();
-
-    /**
-     * @brief Desenha as informações vitais, combustível e recarga do clarão na tela.
-     */
-    void drawHUD() const;
+    void drawDawnOverlay() const;
 
     SceneManager& m_sceneManager;
     Player m_player;
@@ -85,12 +72,17 @@ private:
     RenderTextureWrapper m_lightMask;
     std::vector<DeadTree> m_deadTrees;
 
-    float m_mapWidth;
-    float m_mapHeight;
-    int m_currentNight;
-    int m_totalNights;
+    EventBus m_eventBus;
+    EnemySpawner m_spawner;
+    HUD m_hud;
+
     float m_nightTimer;
-    float m_nightDuration;
+    bool m_isDawn;
+    float m_dawnTimer;
+
+    float m_flareRingRadius;
+    float m_flareMaxRadius;
+    float m_flareActiveTimer;
 };
 
 }  // namespace lastwick

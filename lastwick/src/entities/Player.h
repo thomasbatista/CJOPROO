@@ -1,6 +1,7 @@
 #ifndef LASTWICK_ENTITIES_PLAYER_H
 #define LASTWICK_ENTITIES_PLAYER_H
 
+#include "core/GameConfig.h"
 #include "entities/Entity.h"
 #include "entities/Lantern.h"
 
@@ -10,7 +11,8 @@ namespace lastwick {
  * @brief Representa o guardião solitário da torre, controlado pelo jogador.
  *
  * Herda de Entity e compõe uma Lantern. Realiza movimentação bidimensional
- * contínua com normalização vetorial e contenção estrita aos limites do mapa.
+ * contínua com normalização vetorial, contenção estrita aos limites do mapa,
+ * gerenciamento de vidas e estado temporário de invulnerabilidade com efeito piscante.
  */
 class Player : public Entity {
 public:
@@ -20,7 +22,8 @@ public:
      * @param lives Quantidade inicial de vidas (padrão 3).
      * @param speed Velocidade de deslocamento em pixels por segundo.
      */
-    Player(Vector2 position, int lives = 3, float speed = 230.0f);
+    Player(Vector2 position, int lives = GameConfig::kPlayerInitialLives,
+           float speed = GameConfig::kPlayerSpeed);
 
     /**
      * @brief Destrutor virtual padrão.
@@ -48,10 +51,29 @@ public:
     void setMapBounds(float minX, float minY, float maxX, float maxY);
 
     /**
-     * @brief Aplica perda de vida ao jogador.
+     * @brief Aplica perda de vida ao jogador e ativa a janela de invulnerabilidade.
      * @param amount Quantidade de vidas subtraídas.
      */
     void takeDamage(int amount);
+
+    /**
+     * @brief Aplica dano de contato com verificação prévia de invulnerabilidade.
+     * @param damage Dano causado pelo inimigo.
+     * @return Verdadeiro se o jogador efetivamente sofreu o dano.
+     */
+    bool hit(int damage);
+
+    /**
+     * @brief Verifica se o jogador está em período transitório de invulnerabilidade.
+     * @return Verdadeiro se não puder receber dano.
+     */
+    bool isInvulnerable() const;
+
+    /**
+     * @brief Obtém o raio da área circular de colisão do jogador.
+     * @return Raio em pixels.
+     */
+    float getCollisionRadius() const;
 
     /**
      * @brief Obtém a quantidade restante de vidas.
@@ -89,6 +111,7 @@ private:
     int m_maxLives;
     float m_speed;
     float m_collisionRadius;
+    float m_invulnerabilityTimer;
     Vector2 m_facingDirection;
     Vector2 m_minBound;
     Vector2 m_maxBound;
