@@ -1,0 +1,8 @@
+build*/
+cmake-build-*/
+out/
+CMakeLists.txt.user*
+*.exe
+*.obj
+*.o
+*.a
