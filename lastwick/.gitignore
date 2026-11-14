@@ -1,9 +1,17 @@
+# Diretorios de compilacao e artefatos de build
 build*/
 cmake-build-*/
 out/
+
+# Configuracoes de usuario do IDE / Qt Creator
 CMakeLists.txt.user*
+
+# Dados gerados em tempo de execucao
+highscore.txt
+temp_test_highscore.txt
+
+# Executaveis e binarios compilados
 *.exe
 *.obj
 *.o
 *.a
-highscore.txt

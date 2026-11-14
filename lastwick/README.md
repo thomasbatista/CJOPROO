@@ -1,155 +1,226 @@
 # Last Wick
 
-**Last Wick** e um jogo bidimensional de sobrevivencia com perspectiva superior (top-down), desenvolvido em C++17 utilizando a biblioteca grafica raylib 5.5, como projeto academico para a disciplina de Programacao Orientada a Objetos.
+**Last Wick** é um jogo bidimensional de ação e sobrevivência em visão superior (*top-down*), desenvolvido em C++17 com a biblioteca gráfica e de multimídia raylib 5.5. O projeto foi concebido e implementado do zero para a disciplina de Programação Orientada a Objetos.
 
-## Descricao e Conceito
+---
 
-Em uma regiao ficticia envolta por brumas e nevoa perene, o ultimo guardiao de uma torre ancestral carrega a unica lanterna funcional e precisa manter seu pavio aceso durante tres noites sucessivas (90 segundos de sobrevivencia por noite, com dificuldade progressiva).
+## Informações Acadêmicas
 
-O alcance visual e a seguranca do guardiao dependem diretamente do combustivel (oleo) da lanterna, que queima gradativamente. Fora da iluminacao, sombras se deslocam com agilidade multiplicada por 1.6. Ao penetrarem o halo de luz, as entidades sombrias sofrem exposicao luminosa progressiva ate se dissiparem. Em momentos criticos, o guardiao pode liberar um Clarao — uma detonacao concentrada de luz que atinge 1.8x o raio da lanterna e aplica exposicao extra a todos os inimigos no raio, consumindo 25 de combustivel com recarga de 6 segundos. O jogador inicia com 3 vidas e recebe uma janela de invulnerabilidade de 1.5 segundos ao sofrer dano.
+- **Autor:** Thomas Batista Pinto
+- **Disciplina:** Programação Orientada a Objetos
+- **Instituição:** Instituto Federal de Educação, Ciência e Tecnologia de São Paulo (IFSP), Campus Campos do Jordão
 
-## Variedade de Inimigos
+---
 
-- **Crawler**: Criatura insetoide sombria que persegue o guardiao em linha reta (velocidade 110, morre com 1.0 s de exposicao a luz, causa 1 ponto de dano de contato).
-- **Wisp**: Espectro agil que avanca em zigue-zague senoidal (velocidade 170, dissipa-se com 0.5 s de exposicao, causa 1 ponto de dano de contato).
-- **Giant**: Colosso resistente e macico (velocidade 60, raio amplo de colisao, requer 3.0 s de exposicao, causa 2 pontos de dano de contato).
+## Conceito e Ambientação
 
-Os corpos das criaturas permanecem ocultos sob a mascara de escuridao, revelando-se apenas sob a luz da lanterna, enquanto seus olhos avermelhados brilham diretamente atraves das sombras para sinalizar a aproximacao.
+Em uma vasta região fictícia eternamente recoberta por uma névoa densa e impenetrável, o último guardião de uma antiga torre solitária carrega consigo a última lanterna acesa da humanidade. Sua missão vital consiste em defender e alimentar o pavio da lanterna por 3 noites consecutivas (cada uma durando 90 segundos), enfrentando hordas crescentes de entidades hostis feitas de trevas e sombras.
 
-## Itens Coletaveis (Pickups)
+O raio luminoso que protege o guardião depende diretamente da quantidade de combustível (óleo) restante na lanterna, que queima gradualmente ao longo do tempo. Quando as criaturas da névoa estão no escuro, sua velocidade é amplificada em 1.6x; ao adentrarem o halo de iluminação do jogador, passam a sofrer exposição luminosa acumulada até serem purificadas e eliminadas.
 
-Gerados aleatoriamente pelo `PickupSpawner` (Factory Method) a cada 8 a 12 segundos, com permanencia de 15 segundos no chao e limite de 3 itens simultaneos. Possuem brilho pulsante proprio visivel atraves da escuridao:
+Em situações críticas de cerco, o guardião pode acionar o **Clarão da Lanterna** (*Flare*), gerando uma onda de choque de luz concentrada que atinge uma área 1.8x maior que o raio habitual da lanterna, aplicando alta carga de exposição a todas as sombras circundantes em troca de 25 unidades de óleo e um tempo de recarga de 6 segundos.
 
-- **OilFlask**: Frasco ancestral que restaura +35 de combustivel na lanterna (limitado ao maximo de 100).
-- **Amulet**: Amuleto protetor que concede escudo mistico de 6 segundos, ignorando qualquer dano de contato.
-- **Boots**: Botas aladas que amplificam a velocidade de locomocao em x1.4 por 6 segundos.
+---
 
-## Progressao de Noites e Pontuacao
+## Controles do Jogo
 
-- **RunState**: Estado persistente mantido entre as noites (pontuacao, vidas, noite atual e inimigos derrotados).
-- **NightIntroScene**: Exibe "Noite N" por 3 segundos antes do inicio de cada noite.
-- **Finalizacao da Noite**: Ao esgotar os 90 segundos de sobrevivencia, o jogador recebe +100 pontos de bonificacao, mantem vidas e pontuacao, restaura o combustivel para 100 e avanca para a noite seguinte.
-- **Vitoria Total**: Ao sobreviver a 3ª noite, concede um bonus adicional de +50 pontos por vida restante e transita para a tela de vitoria.
-- **Recorde Persistente (HighScoreStore)**: Leitura e escrita tolerante a falhas do recorde no arquivo `highscore.txt`.
+| Comando | Tecla / Ação | Descrição |
+| :--- | :--- | :--- |
+| **Movimentação** | `W`, `A`, `S`, `D` ou `Setas` | Movimenta o guardião pelo mapa com normalização vetorial e contenção de bordas. |
+| **Clarão da Lanterna** | `Barra de Espaço` | Emite explosão de luz (gasta 25 de óleo, recarga de 6 s) e atinge sombras próximas. |
+| **Pausar / Retomar** | `P` | Alterna a sobreposição de pausa congelando tempo, recargas e entidades. |
+| **Menu Principal** | `M` (na tela de pausa) | Abandona a sessão em andamento e retorna à tela de abertura. |
+| **Confirmar / Iniciar** | `ENTER` | Inicia o jogo no menu principal ou avança para a próxima etapa. |
+| **Tentar Novamente** | `R` (na tela final) | Reinicia imediatamente uma nova partida completa a partir da Noite 1. |
 
-## Sistema de Audio Procedural (AudioManager)
+*Observação:* Para assegurar a estabilidade das sessões e evitar saídas acidentais, a tecla ESC não fecha a aplicação nem interfere na pausa. O encerramento do jogo ocorre exclusivamente pelo botão de fechar da janela gráfica.
 
-Sintese de audio inteiramente realizada em codigo C++ utilizando buffers de ondas senoidais, quadradas, arpejos e ruido modulado via `Wave` e `LoadSoundFromWave` da raylib, sem dependencia de arquivos de midia externos:
+---
 
-- **Inimigo Derrotado**: Dissipacao de frequencia descendente com ruido.
-- **Jogador Atingido**: Impacto percussivo de onda quadrada.
-- **Clarao**: Detonacao luminosa ascendente.
-- **Item Coletado**: Arpejo de sino cristalino.
-- **Amanhecer**: Acorde maior triunfal de conclusao de noite.
-- **Derrota**: Tom sombrio menor de encerramento da chama.
+## Tabela de Inimigos
 
-## Controles
+As sombras que habitam a névoa eterna manifestam-se em três formas com comportamentos e atributos específicos:
 
-- **W, A, S, D** ou **Setas do Teclado**: Movimentacao suave do guardiao (com normalizacao de diagonais)
-- **Barra de Espaco**: Acionamento do Clarao da lanterna (consome 25 de oleo e possui recarga de 6 s)
-- **P** ou **ESC**: Alterna a tela de pausa com congelamento total da simulacao
-- **M (no menu de pausa)**: Retorna ao Menu Principal
-- **ENTER**: Avanca introducoes e confirma opcoes
-- **R (na tela final)**: Reinicia uma nova partida a partir da Noite 1
+| Inimigo | Velocidade (Luz / Escuro) | Exposição para Morte | Dano de Contato | Comportamento e Dinâmica |
+| :--- | :--- | :--- | :--- | :--- |
+| **Crawler** | 110 px/s / 176 px/s | 1.0 s | 1 ponto | Persegue o jogador em trajetória retilínea direta, avançando em grupo. |
+| **Wisp** | 170 px/s / 272 px/s | 0.5 s | 1 ponto | Espectro veloz que se desloca em zigue-zague senoidal perpendicular ao avanço. |
+| **Giant** | 60 px/s / 96 px/s | 3.0 s | 2 pontos | Colosso lento e massivo de grande raio; absorve grande quantidade de luz. |
 
-## Arquitetura de Software e Orientacao a Objetos
+Todos os inimigos se camuflam integralmente sob a camada escura de névoa, tornando seus corpos visíveis apenas quando iluminados pela lanterna. Contudo, seus olhos vermelhos e sinistros brilham mesmo através da escuridão, alertando o guardião da aproximação de perigo.
 
-- **Abstracao e Polimorfismo de Entidades**: Classes abstratas `Entity`, `Enemy` e `Pickup` estendidas polimorficamente por `Player`, `Crawler`, `Wisp`, `Giant`, `OilFlask`, `Amulet` e `Boots`.
-- **Factory Method**: Implementado em `EnemySpawner::createEnemy` e `PickupSpawner::createPickup`.
-- **Padrao Observer**: `EventBus` centralizado com inscricoes desacopladas de `HUD` e `AudioManager`.
-- **Padrao State**: Gerenciador `SceneManager` intermediando `MenuScene`, `NightIntroScene`, `GameScene` e `GameOverScene`.
-- **Composicao**: `Player` compoe uma instancia dedicada de `Lantern`.
-- **Centralizacao de Parametros (GameConfig)**: Eliminacao de numeros magicos com constantes `constexpr`.
-- **Gerenciamento Seguro de Recursos (RAII)**: Envelopamento de texturas, recursos sonoros e audio.
+---
 
-## Estrutura de Diretorios
+## Tabela de Itens Coletáveis (*Pickups*)
+
+Surgem aleatoriamente pelo mapa através do `PickupSpawner` (intervalo de 8 a 12 segundos, com expiração de 15 segundos e teto de 3 itens simultâneos). Emitem um brilho místico pulsante visível através das trevas:
+
+| Item | Representação Visual | Efeito Aplicado | Duração / Capacidade |
+| :--- | :--- | :--- | :--- |
+| **OilFlask** | Frasco alquímico de vidro ambarino | Restaura +35 de combustível na lanterna | Imediato (limitado ao teto de 100 de óleo) |
+| **Amulet** | Relíquia sagrada em losango ciano | Barreira protetora que ignora todo dano | 6.0 segundos (exibe anel místico ao redor do herói) |
+| **Boots** | Botas aladas com asas douradas | Acelera a locomoção do guardião em 1.4x | 6.0 segundos (rastro veloz de movimento) |
+
+---
+
+## Mapeamento de Conceitos de POO
+
+O projeto foi estruturado seguindo rigorosamente os pilares e padrões clássicos de Programação Orientada a Objetos:
+
+| Conceito de POO | Aplicação no Projeto | Arquivos Principais |
+| :--- | :--- | :--- |
+| **Abstração** | Interfaces e contratos puros definindo o ciclo de vida de entidades e cenas sem acoplamento a implementações concretas. | `src/entities/Entity.h`, `src/entities/Enemy.h`, `src/entities/Pickup.h`, `src/core/Scene.h` |
+| **Encapsulamento** | Dados internos e estados críticos protegidos com métodos de acesso controlados e invariantes estritas. | `src/entities/Lantern.h`, `src/entities/Player.h`, `src/core/HighScoreStore.h`, `src/core/EventBus.h` |
+| **Herança** | Especialização em hierarquias bem delineadas: entidades concretas herdando de `Entity`; inimigos especializados herdando de `Enemy`; itens herdando de `Pickup`; cenas herdando de `Scene`. | `src/entities/Crawler.h`, `src/entities/Wisp.h`, `src/entities/Giant.h`, `src/entities/OilFlask.h`, `src/scenes/GameScene.h` |
+| **Polimorfismo** | Execução dinâmica em tempo de execução via tabelas virtuais para atualização e renderização de coleções heterogêneas de criaturas e itens. | `src/entities/Enemy.h` (`update`, `draw`, `drawEyes`, `contactDamage`), `src/entities/Pickup.h` (`apply`, `draw`) |
+| **Composição** | Construção de objetos complexos a partir de subsistemas menores coesos (`Player` compõe `Lantern`; `GameScene` agrega `EnemySpawner`, `PickupSpawner`, `ParticleSystem`, `AudioManager` e `HUD`). | `src/entities/Player.h`, `src/scenes/GameScene.h` |
+| **Padrão State** | Transição elegante entre estados de aplicação (Menu, Introdução de Noite, Jogo Ativo e Fim de Jogo) com suporte a *fade in/out*. | `src/core/SceneManager.h`, `src/core/SceneManager.cpp`, `src/core/Scene.h` |
+| **Padrão Observer** | Barramento centralizado para comunicação desacoplada entre a simulação e os observadores visuais, estatísticos e sonoros. | `src/core/EventBus.h`, `src/core/EventBus.cpp`, `src/scenes/HUD.h`, `src/core/ParticleSystem.h`, `src/core/AudioManager.h` |
+| **Padrão Factory Method** | Instanciação polimórfica desacoplada de inimigos e itens através de métodos de fabricação dedicados. | `src/entities/EnemySpawner.h` (`createEnemy`), `src/entities/PickupSpawner.h` (`createPickup`) |
+| **RAII (*Resource Acquisition Is Initialization*)** | Gerenciamento autônomo e determinístico do ciclo de vida de texturas de renderização, amostras de onda e efeitos de áudio. | `src/core/RaylibResource.h` (`RenderTextureWrapper`), `src/core/AudioManager.h` (`SoundWrapper`, `WaveWrapper`) |
+
+---
+
+## Estrutura de Diretórios
 
 ```text
 lastwick/
-├── CMakeLists.txt        # Configuracao de compilacao com FetchContent do raylib 5.5
-├── README.md             # Documentacao do projeto e instrucoes de execucao
-├── .clang-format         # Padronizacao de formatacao de codigo-fonte
-├── assets/               # Recursos de midia externos do jogo
-└── src/
-    ├── main.cpp          # Ponto de entrada, configuracao da janela e audio
-    ├── core/             # Nucleo da aplicacao, configuracoes, eventos, audio e cenas
-    │   ├── AudioManager.h
-    │   ├── AudioManager.cpp
-    │   ├── EventBus.h
-    │   ├── EventBus.cpp
-    │   ├── GameConfig.h
-    │   ├── HighScoreStore.h
-    │   ├── HighScoreStore.cpp
-    │   ├── RaylibResource.h
-    │   ├── RunState.h
-    │   ├── Scene.h
-    │   ├── SceneManager.h
-    │   └── SceneManager.cpp
-    ├── entities/         # Entidades, componentes, inimigos e itens
-    │   ├── Amulet.h
-    │   ├── Amulet.cpp
-    │   ├── Boots.h
-    │   ├── Boots.cpp
-    │   ├── Crawler.h
-    │   ├── Crawler.cpp
-    │   ├── Enemy.h
-    │   ├── Enemy.cpp
-    │   ├── EnemySpawner.h
-    │   ├── EnemySpawner.cpp
-    │   ├── Entity.h
-    │   ├── Entity.cpp
-    │   ├── Giant.h
-    │   ├── Giant.cpp
-    │   ├── Lantern.h
-    │   ├── Lantern.cpp
-    │   ├── OilFlask.h
-    │   ├── OilFlask.cpp
-    │   ├── Pickup.h
-    │   ├── Pickup.cpp
-    │   ├── PickupSpawner.h
-    │   ├── PickupSpawner.cpp
-    │   ├── Player.h
-    │   ├── Player.cpp
-    │   ├── Wisp.h
-    │   └── Wisp.cpp
-    └── scenes/           # Telas de jogo e interface
-        ├── GameOverScene.h
-        ├── GameOverScene.cpp
-        ├── GameScene.h
-        ├── GameScene.cpp
-        ├── HUD.h
-        ├── HUD.cpp
-        ├── MenuScene.h
-        ├── MenuScene.cpp
-        ├── NightIntroScene.h
-        └── NightIntroScene.cpp
+├── CMakeLists.txt              # Configuração CMake do projeto, raylib 5.5 e testes
+├── README.md                   # Documentação integral do projeto e guia de execução
+├── .clang-format               # Regras de estilização e formatação de código C++
+├── .gitignore                  # Filtro de arquivos gerados, builds e temporários
+├── assets/                     # Pasta reservada para recursos adicionais
+├── src/
+│   ├── main.cpp                # Ponto de entrada, janela, taxa de quadros e áudio
+│   ├── core/                   # Núcleo arquitetural, utilitários, áudio e eventos
+│   │   ├── AudioManager.h      # Síntese procedural de ondas sonoras e RAII
+│   │   ├── AudioManager.cpp
+│   │   ├── EventBus.h          # Barramento de eventos (Padrão Observer)
+│   │   ├── EventBus.cpp
+│   │   ├── GameConfig.h        # Constantes globais de balanceamento e física
+│   │   ├── HighScoreStore.h    # Persistência de recordes com tolerância a falhas
+│   │   ├── HighScoreStore.cpp
+│   │   ├── ParticleSystem.h    # Sistema de partículas para feedback visual
+│   │   ├── ParticleSystem.cpp
+│   │   ├── RaylibResource.h    # Encapsulamento RAII de recursos do raylib
+│   │   ├── RunState.h          # Estrutura de estado persistente entre noites
+│   │   ├── Scene.h             # Interface base abstrata de cena
+│   │   ├── SceneManager.h      # Máquina de estados finitos com fade (Padrão State)
+│   │   └── SceneManager.cpp
+│   ├── entities/               # Entidades lógicas, jogador, inimigos e itens
+│   │   ├── Amulet.h            # Item de invulnerabilidade temporária
+│   │   ├── Amulet.cpp
+│   │   ├── Boots.h             # Item de aceleração de velocidade
+│   │   ├── Boots.cpp
+│   │   ├── Crawler.h           # Inimigo rastejante de perseguição linear
+│   │   ├── Crawler.cpp
+│   │   ├── Enemy.h             # Classe abstrata base para entidades hostis
+│   │   ├── Enemy.cpp
+│   │   ├── EnemySpawner.h      # Gerador e fábrica polimórfica de inimigos
+│   │   ├── EnemySpawner.cpp
+│   │   ├── Entity.h            # Classe abstrata base do modelo de entidades
+│   │   ├── Entity.cpp
+│   │   ├── Giant.h             # Inimigo titânico lento e resistente
+│   │   ├── Giant.cpp
+│   │   ├── Lantern.h           # Componente de iluminação, óleo e clarão
+│   │   ├── Lantern.cpp
+│   │   ├── OilFlask.h          # Item de recarga de combustível da lanterna
+│   │   ├── OilFlask.cpp
+│   │   ├── Pickup.h           # Classe abstrata base para itens coletáveis
+│   │   ├── Pickup.cpp
+│   │   ├── PickupSpawner.h     # Gerador e fábrica polimórfica de itens
+│   │   ├── PickupSpawner.cpp
+│   │   ├── Player.h            # Guardião controlado pelo usuário
+│   │   ├── Player.cpp
+│   │   ├── Wisp.h              # Inimigo etéreo veloz com movimento senoidal
+│   │   └── Wisp.cpp
+│   └── scenes/                 # Telas concretas do jogo e HUD
+│       ├── GameOverScene.h     # Tela de resultado (vitória ou derrota) e recorde
+│       ├── GameOverScene.cpp
+│       ├── GameScene.h         # Cena central de jogabilidade e orquestração
+│       ├── GameScene.cpp
+│       ├── HUD.h               # Mostrador de vidas, combustível, tempo e pontos
+│       ├── HUD.cpp
+│       ├── MenuScene.h         # Tela de título e instrução de comandos
+│       ├── MenuScene.cpp
+│       ├── NightIntroScene.h   # Tela de transição temática entre noites
+│       └── NightIntroScene.cpp
+└── tests/
+    └── test_main.cpp           # Suíte de testes unitários automatizados
 ```
 
-## Como Compilar
+---
 
-### Requisitos
+## Nota Técnica: Geração Procedural de Áudio e Gráficos
 
-- Compilador C++ com suporte ao padrao C++17 (GCC/MinGW-w64 11+ ou Clang 13+)
-- CMake 3.16 ou superior
-- Git (utilizado pelo CMake para baixar o raylib 5.5 via FetchContent)
+O jogo adota uma filosofia autossuficiente e determinística em sua apresentação audiovisual:
 
-### Compilacao pelo Qt Creator (Kit MinGW 64)
+1. **Gráficos por Primitivas Geométricas e Mistura de Canais:**
+   Todo o visual — desde os galhos retorcidos das árvores mortas, o guardião encapuzado, as três criaturas das trevas até os três itens mágicos — é desenhado diretamente em tempo real por primitivas matemáticas da raylib. A iluminação dinâmica emprega uma textura alvo auxiliar (*RenderTexture2D*) na qual é desenhado o gradiente de luz do guardião, multiplicada sobre o cenário físico com o modo `BLEND_MULTIPLIED` e complementada por um brilho aditivo `BLEND_ADD_COLORS`.
 
-1. Abra o Qt Creator.
-2. Selecione **File -> Open File or Project...** e aponte para o arquivo `CMakeLists.txt` na raiz deste projeto.
-3. Escolha o kit configurado **MinGW 64-bit** (por exemplo, `mingw1310_64`).
-4. Clique em **Configure Project**.
-5. Aguarde o download automatico do raylib 5.5 via FetchContent e a geracao dos arquivos de projeto.
-6. Pressione `Ctrl + B` para compilar ou `Ctrl + R` para executar diretamente.
+2. **Síntese Sonora Procedural sem Arquivos Externos:**
+   O `AudioManager` sintetiza todas as amostras de áudio diretamente em memória (alocação de buffers de ondas via `Wave`), modulando frequências senoidais, quadradas e ruído branco pseudoaleatório com decaimento exponencial de envelope. Cada som é convertido em um recurso de áudio da raylib (`Sound`) encapsulado com semântica RAII para desalocação automática, cobrindo:
+   - Impacto de dano no guardião;
+   - Purificação e eliminação de inimigos;
+   - Detonação do clarão da lanterna;
+   - Coleta de artefatos com arpejo cintilante;
+   - Alvorada triunfal e esgotamento da chama.
 
-### Compilacao via Linha de Comando
+---
+
+## Instruções de Compilação e Execução
+
+### Pré-requisitos
+- Compilador C++ com suporte integral a C++17 (MinGW-w64 GCC 11+ ou Clang 13+);
+- CMake 3.16 ou superior;
+- Gerador Ninja (opcional, recomendado para compilação veloz);
+- Conexão à internet na primeira execução para download automático do raylib 5.5 via `FetchContent`.
+
+---
+
+### Opção 1: Compilação pelo Qt Creator (Kit MinGW 64)
+
+1. Abra o **Qt Creator**;
+2. Vá em **File -> Open File or Project...** (`Ctrl + O`) e selecione o arquivo `CMakeLists.txt` na raiz da pasta `lastwick`;
+3. Na tela de configuração de projetos, selecione o kit **MinGW 64-bit** (por exemplo, `Desktop Qt ... MinGW 64-bit` ou `Tools/mingw1310_64`);
+4. Clique em **Configure Project** e aguarde a configuração inicial do CMake;
+5. Pressione `Ctrl + B` para compilar o projeto ou `Ctrl + R` para executar o jogo diretamente.
+
+---
+
+### Opção 2: Compilação via Linha de Comando (CMake + Ninja ou Make)
+
+Abra o terminal (PowerShell ou Bash) na raiz do projeto `lastwick`:
 
 ```bash
-# Configuracao do projeto gerando os arquivos de construcao
-cmake -B build -DCMAKE_BUILD_TYPE=Release
+# 1. Configurar o diretório de build
+cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
 
-# Compilacao do executavel
+# 2. Compilar o executável do jogo e a suíte de testes
 cmake --build build --config Release
 ```
 
-O binario gerado estara disponivel em `build/LastWick.exe` (ou `build/LastWick` em ambientes Unix).
+O binário executável será gerado em:
+- **Windows:** `build/LastWick.exe`
+- **Linux/macOS:** `build/LastWick`
+
+Para iniciar o jogo:
+```bash
+./build/LastWick.exe
+```
+
+---
+
+## Execução dos Testes Automatizados (CTest)
+
+Os testes unitários cobrem de forma independente de janela ou áudio as regras de negócio de `Lantern`, `RunState`, `HighScoreStore` e `EnemySpawner`:
+
+```bash
+# Executar a bateria de testes via CTest exibindo a saída detalhada
+ctest --test-dir build --output-on-failure
+```
+
+Ou alternativamente executando o binário de testes diretamente:
+```bash
+./build/LastWickTests.exe
+```
