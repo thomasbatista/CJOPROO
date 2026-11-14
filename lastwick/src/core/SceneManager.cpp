@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "core/AudioManager.h"
 #include "core/GameConfig.h"
 #include "raylib.h"
 
@@ -13,7 +14,12 @@ SceneManager::SceneManager()
       m_pendingScene(nullptr),
       m_shouldClose(false),
       m_fadeState(FadeState::None),
-      m_fadeTimer(0.0f) {}
+      m_fadeTimer(0.0f),
+      m_eventBus(),
+      m_musicPlayer() {
+    m_musicPlayer.registerEvents(m_eventBus);
+    m_musicPlayer.playMenuTheme();
+}
 
 SceneManager::~SceneManager() = default;
 
@@ -36,6 +42,14 @@ void SceneManager::changeScene(std::unique_ptr<Scene> nextScene) {
 }
 
 void SceneManager::update(float deltaTime) {
+    // Tecla M alterna o silenciamento global de áudio em qualquer cena
+    if (IsKeyPressed(KEY_M)) {
+        toggleAudioMute();
+    }
+
+    // Atualização contínua do fluxo de música procedural
+    m_musicPlayer.update();
+
     if (m_fadeState == FadeState::FadeOut) {
         m_fadeTimer += deltaTime;
         if (m_fadeTimer >= GameConfig::kSceneFadeDuration) {
@@ -67,6 +81,7 @@ void SceneManager::draw() {
         m_currentScene->draw();
     }
 
+    // Camada visual de transição suave
     if (m_fadeState != FadeState::None) {
         float progress = m_fadeTimer / GameConfig::kSceneFadeDuration;
         progress = std::clamp(progress, 0.0f, 1.0f);
@@ -76,6 +91,18 @@ void SceneManager::draw() {
 
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, alpha));
     }
+
+    // Aviso discreto de silenciamento global de áudio
+    if (isAudioMuted()) {
+        const char* muteNotice = "Som desligado";
+        int fontSize = 16;
+        int textWidth = MeasureText(muteNotice, fontSize);
+        int noticeX = GetScreenWidth() - textWidth - 16;
+        int noticeY = 16;
+        DrawRectangle(noticeX - 8, noticeY - 4, textWidth + 16, 26, Color{18, 20, 26, 215});
+        DrawRectangleLines(noticeX - 8, noticeY - 4, textWidth + 16, 26, Color{100, 48, 48, 220});
+        DrawText(muteNotice, noticeX, noticeY, fontSize, Color{235, 95, 90, 240});
+    }
 }
 
 bool SceneManager::shouldClose() const {
@@ -84,6 +111,23 @@ bool SceneManager::shouldClose() const {
 
 void SceneManager::requestClose() {
     m_shouldClose = true;
+}
+
+EventBus& SceneManager::getEventBus() {
+    return m_eventBus;
+}
+
+MusicPlayer& SceneManager::getMusicPlayer() {
+    return m_musicPlayer;
+}
+
+bool SceneManager::isAudioMuted() const {
+    return AudioManager::isMuted();
+}
+
+void SceneManager::toggleAudioMute() {
+    AudioManager::toggleMute();
+    m_musicPlayer.setMuted(AudioManager::isMuted());
 }
 
 }  // namespace lastwick

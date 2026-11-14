@@ -60,6 +60,7 @@ void GameScene::init() {
     m_audioManager.registerEvents(m_eventBus);
     m_particleSystem.clear();
     m_particleSystem.registerEvents(m_eventBus);
+    m_sceneManager.getMusicPlayer().registerEvents(m_eventBus);
 
     m_eventBus.subscribe(EventType::EnemyKilled, [this](const Event&) {
         m_runState.enemiesDefeated++;
@@ -72,6 +73,8 @@ void GameScene::init() {
         m_shakeTimer = GameConfig::kShakeDurationDamage;
         m_shakeIntensity = GameConfig::kShakeIntensityDamage;
     });
+
+    m_eventBus.emit(Event{EventType::NightStarted, m_runState.currentNight, 0.0f});
 
     m_enemySpawner.clear();
     m_enemySpawner.setCurrentNight(m_runState.currentNight);
@@ -101,10 +104,15 @@ void GameScene::update(float deltaTime) {
     // 1. Processamento e controle do menu de pausa exclusivamente com a tecla P
     if (IsKeyPressed(KEY_P)) {
         m_isPaused = !m_isPaused;
+        if (m_isPaused) {
+            m_eventBus.emit(Event{EventType::RunPaused, 0, 0.0f});
+        } else {
+            m_eventBus.emit(Event{EventType::RunResumed, 0, 0.0f});
+        }
     }
 
     if (m_isPaused) {
-        if (IsKeyPressed(KEY_M)) {
+        if (IsKeyPressed(KEY_Q)) {
             m_sceneManager.changeScene(std::make_unique<MenuScene>(m_sceneManager));
         }
         return;
@@ -163,6 +171,7 @@ void GameScene::update(float deltaTime) {
             int lifeBonus = m_runState.lives * GameConfig::kPointsPerRemainingLife;
             m_runState.score += lifeBonus;
             m_runState.isVictory = true;
+            m_eventBus.emit(Event{EventType::RunEnded, 1, 0.0f});
             m_sceneManager.changeScene(std::make_unique<GameOverScene>(m_sceneManager, m_runState));
         }
         return;
@@ -173,6 +182,7 @@ void GameScene::update(float deltaTime) {
         m_runState.isVictory = false;
         m_runState.lives = m_player.getLives();
         m_eventBus.emit(Event{EventType::GameOver, 0, 0.0f, m_player.getPosition()});
+        m_eventBus.emit(Event{EventType::RunEnded, 0, 0.0f});
         m_sceneManager.changeScene(std::make_unique<GameOverScene>(m_sceneManager, m_runState));
         return;
     }
@@ -391,19 +401,25 @@ void GameScene::drawPauseOverlay() const {
     const char* pauseTitle = "JOGO PAUSADO";
     int titleFontSize = 36;
     int titleWidth = MeasureText(pauseTitle, titleFontSize);
-    DrawText(pauseTitle, static_cast<int>(centerX - titleWidth * 0.5f), panelY + 28, titleFontSize,
+    DrawText(pauseTitle, static_cast<int>(centerX - titleWidth * 0.5f), panelY + 24, titleFontSize,
              Color{240, 215, 130, 255});
 
     const char* resumeText = "[P] Continuar a Partida";
-    int resumeFontSize = 20;
+    int resumeFontSize = 19;
     int resumeWidth = MeasureText(resumeText, resumeFontSize);
-    DrawText(resumeText, static_cast<int>(centerX - resumeWidth * 0.5f), panelY + 95,
+    DrawText(resumeText, static_cast<int>(centerX - resumeWidth * 0.5f), panelY + 82,
              resumeFontSize, Color{210, 215, 225, 230});
 
-    const char* menuText = "[M] Retornar ao Menu Principal";
-    int menuFontSize = 20;
+    const char* soundText = "[M] Alternar Som";
+    int soundFontSize = 19;
+    int soundWidth = MeasureText(soundText, soundFontSize);
+    DrawText(soundText, static_cast<int>(centerX - soundWidth * 0.5f), panelY + 118, soundFontSize,
+             Color{195, 205, 220, 220});
+
+    const char* menuText = "[Q] Retornar ao Menu Principal";
+    int menuFontSize = 19;
     int menuWidth = MeasureText(menuText, menuFontSize);
-    DrawText(menuText, static_cast<int>(centerX - menuWidth * 0.5f), panelY + 135, menuFontSize,
+    DrawText(menuText, static_cast<int>(centerX - menuWidth * 0.5f), panelY + 154, menuFontSize,
              Color{180, 185, 195, 200});
 }
 

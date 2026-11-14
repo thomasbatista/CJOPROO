@@ -6,6 +6,8 @@
 
 namespace lastwick {
 
+bool AudioManager::s_muted = false;
+
 AudioManager::AudioManager()
     : m_initialized(false),
       m_enemyKilledSound{},
@@ -34,39 +36,51 @@ void AudioManager::registerEvents(EventBus& eventBus) {
 }
 
 void AudioManager::playEnemyKilled() {
-    if (m_initialized && IsAudioDeviceReady()) {
+    if (!s_muted && m_initialized && IsAudioDeviceReady()) {
         PlaySound(m_enemyKilledSound);
     }
 }
 
 void AudioManager::playPlayerHit() {
-    if (m_initialized && IsAudioDeviceReady()) {
+    if (!s_muted && m_initialized && IsAudioDeviceReady()) {
         PlaySound(m_playerHitSound);
     }
 }
 
 void AudioManager::playFlareUsed() {
-    if (m_initialized && IsAudioDeviceReady()) {
+    if (!s_muted && m_initialized && IsAudioDeviceReady()) {
         PlaySound(m_flareUsedSound);
     }
 }
 
 void AudioManager::playPickupCollected() {
-    if (m_initialized && IsAudioDeviceReady()) {
+    if (!s_muted && m_initialized && IsAudioDeviceReady()) {
         PlaySound(m_pickupCollectedSound);
     }
 }
 
 void AudioManager::playDawnReached() {
-    if (m_initialized && IsAudioDeviceReady()) {
+    if (!s_muted && m_initialized && IsAudioDeviceReady()) {
         PlaySound(m_dawnReachedSound);
     }
 }
 
 void AudioManager::playGameOver() {
-    if (m_initialized && IsAudioDeviceReady()) {
+    if (!s_muted && m_initialized && IsAudioDeviceReady()) {
         PlaySound(m_gameOverSound);
     }
+}
+
+bool AudioManager::isMuted() {
+    return s_muted;
+}
+
+void AudioManager::setMuted(bool muted) {
+    s_muted = muted;
+}
+
+void AudioManager::toggleMute() {
+    s_muted = !s_muted;
 }
 
 Sound AudioManager::synthesizeSound(float duration, float startFreq, float endFreq, float volume,

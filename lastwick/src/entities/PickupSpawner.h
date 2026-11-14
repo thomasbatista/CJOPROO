@@ -24,7 +24,8 @@ enum class PickupType { OilFlask, Amulet, Boots };
  *
  * Implementa o padrão Factory Method para instanciação dos itens, controla
  * o intervalo aleatório de geração (8 a 12 s), o limite de itens simultâneos (máx 3),
- * a expiração temporal (15 s) e a emissão do evento PickupCollected.
+ * a expiração temporal (15 s), a distribuição ponderada de tipos (50% OilFlask,
+ * 20% Amulet, 30% Boots) e a restrição de acúmulo de óleo caso haja 2+ itens no mapa.
  */
 class PickupSpawner {
 public:
@@ -74,6 +75,21 @@ public:
      * @return Número de itens ativos.
      */
     size_t getActiveCount() const;
+
+    /**
+     * @brief Sorteia o tipo de item com base nos pesos e quantidade ativa de itens.
+     * @param activeCount Quantidade de itens atualmente no mapa.
+     * @return Tipo de item selecionado.
+     */
+    PickupType choosePickupType(size_t activeCount);
+
+    /**
+     * @brief Lógica pura determinística de sorteio de itens utilizada em testes unitários.
+     * @param activeCount Quantidade de itens atualmente no mapa.
+     * @param roll Valor aleatório normalizado no intervalo [0.0f, 1.0f).
+     * @return Tipo de item selecionado.
+     */
+    static PickupType selectPickupType(size_t activeCount, float roll);
 
 private:
     Vector2 computeSpawnPosition();

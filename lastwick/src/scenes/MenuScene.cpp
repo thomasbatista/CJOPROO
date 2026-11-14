@@ -16,6 +16,7 @@ MenuScene::MenuScene(SceneManager& sceneManager)
 void MenuScene::init() {
     m_pulseTimer = 0.0f;
     m_highScore = HighScoreStore::loadHighScore();
+    m_sceneManager.getMusicPlayer().playMenuTheme();
 }
 
 void MenuScene::update(float deltaTime) {
@@ -72,19 +73,21 @@ void MenuScene::draw() {
 
     // Painel inferior de controles resumidos
     int boxWidth = 560;
-    int boxHeight = 115;
+    int boxHeight = 135;
     int boxX = static_cast<int>(centerX - boxWidth * 0.5f);
-    int boxY = screenHeight - 145;
+    int boxY = screenHeight - 160;
 
     DrawRectangle(boxX, boxY, boxWidth, boxHeight, Color{16, 20, 28, 205});
     DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, Color{60, 68, 85, 185});
 
-    DrawText("CONTROLES", boxX + 24, boxY + 16, 16, Color{195, 180, 150, 255});
-    DrawText("WASD ou Setas : Movimentar o Guardiao", boxX + 24, boxY + 42, 16,
+    DrawText("CONTROLES", boxX + 24, boxY + 14, 16, Color{195, 180, 150, 255});
+    DrawText("WASD ou Setas : Movimentar o Guardiao", boxX + 24, boxY + 38, 15,
              Color{210, 215, 225, 220});
-    DrawText("Espaco        : Clarao da Lanterna (25 oleo, 6 s recarga)", boxX + 24, boxY + 66, 16,
+    DrawText("Espaco        : Clarao da Lanterna (25 oleo, 6 s recarga)", boxX + 24, boxY + 60, 15,
              Color{210, 215, 225, 220});
-    DrawText("P             : Pausar o Jogo", boxX + 24, boxY + 90, 16, Color{180, 190, 205, 200});
+    DrawText("P             : Pausar o Jogo", boxX + 24, boxY + 82, 15, Color{180, 190, 205, 200});
+    DrawText("M             : Alternar Som (Ligar / Desligar)", boxX + 24, boxY + 104, 15,
+             Color{180, 190, 205, 200});
 }
 
 }  // namespace lastwick

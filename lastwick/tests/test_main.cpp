@@ -8,6 +8,7 @@
 #include "core/RunState.h"
 #include "entities/EnemySpawner.h"
 #include "entities/Lantern.h"
+#include "entities/PickupSpawner.h"
 
 #define TEST_ASSERT(condition)                                                                  \
     do {                                                                                        \
@@ -162,6 +163,45 @@ static void testEnemySpawnerConfig() {
     std::cout << "  -> testEnemySpawnerConfig passou com sucesso!\n";
 }
 
+static void testPickupSpawnerBalancing() {
+    std::cout << "[TEST] Executando testPickupSpawnerBalancing...\n";
+
+    // 1. Sorteio ponderado padrão com menos de 2 itens ativos
+    // OilFlask: 50% [0.00f, 0.50f)
+    TEST_ASSERT(PickupSpawner::selectPickupType(0, 0.05f) == PickupType::OilFlask);
+    TEST_ASSERT(PickupSpawner::selectPickupType(0, 0.49f) == PickupType::OilFlask);
+    TEST_ASSERT(PickupSpawner::selectPickupType(1, 0.25f) == PickupType::OilFlask);
+
+    // Amulet: 20% [0.50f, 0.70f)
+    TEST_ASSERT(PickupSpawner::selectPickupType(0, 0.51f) == PickupType::Amulet);
+    TEST_ASSERT(PickupSpawner::selectPickupType(1, 0.69f) == PickupType::Amulet);
+
+    // Boots: 30% [0.70f, 1.00f)
+    TEST_ASSERT(PickupSpawner::selectPickupType(0, 0.71f) == PickupType::Boots);
+    TEST_ASSERT(PickupSpawner::selectPickupType(1, 0.95f) == PickupType::Boots);
+
+    // 2. Restrição estrita de OilFlask com 2 ou mais itens ativos (evita acúmulo de óleo)
+    for (float r = 0.0f; r < 1.0f; r += 0.05f) {
+        TEST_ASSERT(PickupSpawner::selectPickupType(2, r) != PickupType::OilFlask);
+        TEST_ASSERT(PickupSpawner::selectPickupType(3, r) != PickupType::OilFlask);
+    }
+
+    // Com 2+ itens, a proporção Amulet (20%) / Boots (30%) resulta em limiar de 40% (0.40)
+    TEST_ASSERT(PickupSpawner::selectPickupType(2, 0.15f) == PickupType::Amulet);
+    TEST_ASSERT(PickupSpawner::selectPickupType(2, 0.39f) == PickupType::Amulet);
+    TEST_ASSERT(PickupSpawner::selectPickupType(2, 0.41f) == PickupType::Boots);
+    TEST_ASSERT(PickupSpawner::selectPickupType(2, 0.85f) == PickupType::Boots);
+
+    // 3. Teste estocástico com instância de PickupSpawner
+    PickupSpawner spawner;
+    for (int i = 0; i < 60; ++i) {
+        PickupType type = spawner.choosePickupType(2);
+        TEST_ASSERT(type != PickupType::OilFlask);
+    }
+
+    std::cout << "  -> testPickupSpawnerBalancing passou com sucesso!\n";
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "   Iniciando Bateria de Testes Unitarios\n";
@@ -171,6 +211,7 @@ int main() {
     testRunState();
     testHighScoreStore();
     testEnemySpawnerConfig();
+    testPickupSpawnerBalancing();
 
     std::cout << "========================================\n";
     std::cout << "   Todos os testes passaram com exito!\n";

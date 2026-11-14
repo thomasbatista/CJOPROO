@@ -86,6 +86,9 @@ struct GameConfig {
     static constexpr float kNight3GiantWeight = 0.20f;
 
     // Parâmetros dos itens coletáveis (Pickups)
+    static constexpr float kWeightOilFlask = 0.50f;
+    static constexpr float kWeightAmulet = 0.20f;
+    static constexpr float kWeightBoots = 0.30f;
     static constexpr float kOilFlaskFuelBonus = 35.0f;
     static constexpr float kShieldDuration = 6.0f;
     static constexpr float kSpeedBoostMultiplier = 1.4f;
@@ -96,6 +99,10 @@ struct GameConfig {
     static constexpr int kMaxActivePickups = 3;
     static constexpr float kPickupInteractionRadius = 22.0f;
     static constexpr float kPickupGlowRadius = 24.0f;
+
+    // Música ambiente procedural e parâmetros de áudio
+    static constexpr float kMusicBaseVolume = 0.20f;
+    static constexpr float kMusicPauseVolumeMultiplier = 0.35f;
 
     // Efeitos visuais e transições
     static constexpr float kSceneFadeDuration = 0.30f;

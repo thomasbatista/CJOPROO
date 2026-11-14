@@ -28,6 +28,8 @@ add_executable(LastWick
     src/core/HighScoreStore.cpp
     src/core/AudioManager.h
     src/core/AudioManager.cpp
+    src/core/MusicPlayer.h
+    src/core/MusicPlayer.cpp
     src/core/EventBus.h
     src/core/EventBus.cpp
     src/core/ParticleSystem.h
@@ -110,6 +112,16 @@ add_executable(LastWickTests
     src/entities/Giant.cpp
     src/entities/EnemySpawner.h
     src/entities/EnemySpawner.cpp
+    src/entities/Pickup.h
+    src/entities/Pickup.cpp
+    src/entities/OilFlask.h
+    src/entities/OilFlask.cpp
+    src/entities/Amulet.h
+    src/entities/Amulet.cpp
+    src/entities/Boots.h
+    src/entities/Boots.cpp
+    src/entities/PickupSpawner.h
+    src/entities/PickupSpawner.cpp
 )
 
 target_include_directories(LastWickTests PRIVATE src)

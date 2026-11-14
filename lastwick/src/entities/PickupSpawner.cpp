@@ -28,17 +28,49 @@ std::unique_ptr<Pickup> PickupSpawner::createPickup(PickupType type, Vector2 pos
     return std::make_unique<OilFlask>(position);
 }
 
+PickupType PickupSpawner::selectPickupType(size_t activeCount, float roll) {
+    float clampedRoll = std::clamp(roll, 0.0f, 0.999999f);
+
+    // Se já houver 2 ou mais itens no mapa, não gera outro OilFlask
+    if (activeCount >= 2) {
+        float sumWeights = GameConfig::kWeightAmulet + GameConfig::kWeightBoots;
+        float amuletThreshold =
+            (sumWeights > 0.0f) ? (GameConfig::kWeightAmulet / sumWeights) : 0.5f;
+
+        if (clampedRoll < amuletThreshold) {
+            return PickupType::Amulet;
+        }
+        return PickupType::Boots;
+    }
+
+    // Com menos de 2 itens, aplica a distribuição ponderada normal
+    float oilThreshold = GameConfig::kWeightOilFlask;
+    float amuletThreshold = oilThreshold + GameConfig::kWeightAmulet;
+
+    if (clampedRoll < oilThreshold) {
+        return PickupType::OilFlask;
+    }
+    if (clampedRoll < amuletThreshold) {
+        return PickupType::Amulet;
+    }
+    return PickupType::Boots;
+}
+
+PickupType PickupSpawner::choosePickupType(size_t activeCount) {
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    return selectPickupType(activeCount, dist(m_rng));
+}
+
 void PickupSpawner::update(float deltaTime, Player& player, EventBus& eventBus) {
     m_spawnTimer += deltaTime;
 
-    // 1. Geração de novos itens com controle de limite máximo simultâneo
+    // 1. Geração de novos itens com controle de limite máximo e sorteio ponderado
     if (m_spawnTimer >= m_nextSpawnInterval) {
         m_spawnTimer = 0.0f;
         m_nextSpawnInterval = getRandomSpawnInterval();
 
         if (m_pickups.size() < static_cast<size_t>(GameConfig::kMaxActivePickups)) {
-            std::uniform_int_distribution<int> typeDist(0, 2);
-            PickupType type = static_cast<PickupType>(typeDist(m_rng));
+            PickupType type = choosePickupType(m_pickups.size());
             Vector2 pos = computeSpawnPosition();
             m_pickups.push_back(createPickup(type, pos));
         }
@@ -106,7 +138,7 @@ size_t PickupSpawner::getActiveCount() const {
 }
 
 Vector2 PickupSpawner::computeSpawnPosition() {
-    float margin = GameConfig::kMapBoundaryMargin + 120.0f;
+    float margin = GameConfig::kMapBoundaryMargin + 100.0f;
     std::uniform_real_distribution<float> xDist(margin, GameConfig::kMapWidth - margin);
     std::uniform_real_distribution<float> yDist(margin, GameConfig::kMapHeight - margin);
 

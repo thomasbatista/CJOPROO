@@ -19,7 +19,11 @@ enum class EventType {
     FuelEmpty,
     PickupCollected,
     DawnReached,
-    GameOver
+    GameOver,
+    NightStarted,
+    RunPaused,
+    RunResumed,
+    RunEnded
 };
 
 /**

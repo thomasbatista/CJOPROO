@@ -80,7 +80,8 @@ void HUD::draw(const Player& player, float nightTimer, int currentNight, int tot
     }
 
     // 4. Orientação no canto inferior direito
-    DrawText("P: Pausar", screenWidth - 110, screenHeight - 26, 13, Color{150, 160, 175, 170});
+    DrawText("P: Pausa | M: Som", screenWidth - 150, screenHeight - 26, 13,
+             Color{150, 160, 175, 170});
 }
 
 int HUD::getScore() const {

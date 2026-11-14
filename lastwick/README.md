@@ -29,7 +29,8 @@ Em situações críticas de cerco, o guardião pode acionar o **Clarão da Lante
 | **Movimentação** | `W`, `A`, `S`, `D` ou `Setas` | Movimenta o guardião pelo mapa com normalização vetorial e contenção de bordas. |
 | **Clarão da Lanterna** | `Barra de Espaço` | Emite explosão de luz (gasta 25 de óleo, recarga de 6 s) e atinge sombras próximas. |
 | **Pausar / Retomar** | `P` | Alterna a sobreposição de pausa congelando tempo, recargas e entidades. |
-| **Menu Principal** | `M` (na tela de pausa) | Abandona a sessão em andamento e retorna à tela de abertura. |
+| **Alternar Som** | `M` | Liga e desliga todo o áudio (música e efeitos) em qualquer cena (exibe aviso "Som desligado"). |
+| **Menu Principal** | `Q` (na tela de pausa) | Abandona a sessão em andamento e retorna à tela de abertura. |
 | **Confirmar / Iniciar** | `ENTER` | Inicia o jogo no menu principal ou avança para a próxima etapa. |
 | **Tentar Novamente** | `R` (na tela final) | Reinicia imediatamente uma nova partida completa a partir da Noite 1. |
 
@@ -53,13 +54,13 @@ Todos os inimigos se camuflam integralmente sob a camada escura de névoa, torna
 
 ## Tabela de Itens Coletáveis (*Pickups*)
 
-Surgem aleatoriamente pelo mapa através do `PickupSpawner` (intervalo de 8 a 12 segundos, com expiração de 15 segundos e teto de 3 itens simultâneos). Emitem um brilho místico pulsante visível através das trevas:
+Surgem aleatoriamente pelo mapa através do `PickupSpawner` (intervalo de 8 a 12 segundos, com expiração de 15 segundos e teto de 3 itens simultâneos). O gerador sorteia os tipos conforme probabilidades ponderadas e impede o surgimento de mais óleo caso já existam 2 ou mais itens em cena (evitando acúmulo excessivo). Emitem brilho místico pulsante visível através das trevas:
 
-| Item | Representação Visual | Efeito Aplicado | Duração / Capacidade |
-| :--- | :--- | :--- | :--- |
-| **OilFlask** | Frasco alquímico de vidro ambarino | Restaura +35 de combustível na lanterna | Imediato (limitado ao teto de 100 de óleo) |
-| **Amulet** | Relíquia sagrada em losango ciano | Barreira protetora que ignora todo dano | 6.0 segundos (exibe anel místico ao redor do herói) |
-| **Boots** | Botas aladas com asas douradas | Acelera a locomoção do guardião em 1.4x | 6.0 segundos (rastro veloz de movimento) |
+| Item | Probabilidade Base | Representação Visual | Efeito Aplicado | Duração / Capacidade |
+| :--- | :--- | :--- | :--- | :--- |
+| **OilFlask** | 50% (bloqueado se 2+ itens no mapa) | Frasco alquímico de vidro ambarino | Restaura +35 de combustível na lanterna | Imediato (limitado ao teto de 100 de óleo) |
+| **Boots** | 30% (60% se 2+ itens no mapa) | Botas aladas com asas douradas | Acelera a locomoção do guardião em 1.4x | 6.0 segundos (rastro veloz de movimento) |
+| **Amulet** | 20% (40% se 2+ itens no mapa) | Relíquia sagrada em losango ciano | Barreira protetora que ignora todo dano | 6.0 segundos (exibe anel místico ao redor do herói) |
 
 ---
 
@@ -75,9 +76,9 @@ O projeto foi estruturado seguindo rigorosamente os pilares e padrões clássico
 | **Polimorfismo** | Execução dinâmica em tempo de execução via tabelas virtuais para atualização e renderização de coleções heterogêneas de criaturas e itens. | `src/entities/Enemy.h` (`update`, `draw`, `drawEyes`, `contactDamage`), `src/entities/Pickup.h` (`apply`, `draw`) |
 | **Composição** | Construção de objetos complexos a partir de subsistemas menores coesos (`Player` compõe `Lantern`; `GameScene` agrega `EnemySpawner`, `PickupSpawner`, `ParticleSystem`, `AudioManager` e `HUD`). | `src/entities/Player.h`, `src/scenes/GameScene.h` |
 | **Padrão State** | Transição elegante entre estados de aplicação (Menu, Introdução de Noite, Jogo Ativo e Fim de Jogo) com suporte a *fade in/out*. | `src/core/SceneManager.h`, `src/core/SceneManager.cpp`, `src/core/Scene.h` |
-| **Padrão Observer** | Barramento centralizado para comunicação desacoplada entre a simulação e os observadores visuais, estatísticos e sonoros. | `src/core/EventBus.h`, `src/core/EventBus.cpp`, `src/scenes/HUD.h`, `src/core/ParticleSystem.h`, `src/core/AudioManager.h` |
+| **Padrão Observer** | Barramento centralizado para comunicação desacoplada entre a simulação e os observadores visuais, estatísticos e sonoros. | `src/core/EventBus.h`, `src/core/EventBus.cpp`, `src/scenes/HUD.h`, `src/core/ParticleSystem.h`, `src/core/AudioManager.h`, `src/core/MusicPlayer.h` |
 | **Padrão Factory Method** | Instanciação polimórfica desacoplada de inimigos e itens através de métodos de fabricação dedicados. | `src/entities/EnemySpawner.h` (`createEnemy`), `src/entities/PickupSpawner.h` (`createPickup`) |
-| **RAII (*Resource Acquisition Is Initialization*)** | Gerenciamento autônomo e determinístico do ciclo de vida de texturas de renderização, amostras de onda e efeitos de áudio. | `src/core/RaylibResource.h` (`RenderTextureWrapper`), `src/core/AudioManager.h` (`SoundWrapper`, `WaveWrapper`) |
+| **RAII (*Resource Acquisition Is Initialization*)** | Gerenciamento autônomo e determinístico do ciclo de vida de texturas de renderização, amostras de onda, fluxos AudioStream e efeitos de áudio. | `src/core/RaylibResource.h` (`RenderTextureWrapper`), `src/core/AudioManager.h`, `src/core/MusicPlayer.h` |
 
 ---
 
@@ -100,6 +101,8 @@ lastwick/
 │   │   ├── GameConfig.h        # Constantes globais de balanceamento e física
 │   │   ├── HighScoreStore.h    # Persistência de recordes com tolerância a falhas
 │   │   ├── HighScoreStore.cpp
+│   │   ├── MusicPlayer.h       # Reprodutor RAII de música procedural contínua
+│   │   ├── MusicPlayer.cpp
 │   │   ├── ParticleSystem.h    # Sistema de partículas para feedback visual
 │   │   ├── ParticleSystem.cpp
 │   │   ├── RaylibResource.h    # Encapsulamento RAII de recursos do raylib
@@ -158,13 +161,10 @@ O jogo adota uma filosofia autossuficiente e determinística em sua apresentaç�
 1. **Gráficos por Primitivas Geométricas e Mistura de Canais:**
    Todo o visual — desde os galhos retorcidos das árvores mortas, o guardião encapuzado, as três criaturas das trevas até os três itens mágicos — é desenhado diretamente em tempo real por primitivas matemáticas da raylib. A iluminação dinâmica emprega uma textura alvo auxiliar (*RenderTexture2D*) na qual é desenhado o gradiente de luz do guardião, multiplicada sobre o cenário físico com o modo `BLEND_MULTIPLIED` e complementada por um brilho aditivo `BLEND_ADD_COLORS`.
 
-2. **Síntese Sonora Procedural sem Arquivos Externos:**
-   O `AudioManager` sintetiza todas as amostras de áudio diretamente em memória (alocação de buffers de ondas via `Wave`), modulando frequências senoidais, quadradas e ruído branco pseudoaleatório com decaimento exponencial de envelope. Cada som é convertido em um recurso de áudio da raylib (`Sound`) encapsulado com semântica RAII para desalocação automática, cobrindo:
-   - Impacto de dano no guardião;
-   - Purificação e eliminação de inimigos;
-   - Detonação do clarão da lanterna;
-   - Coleta de artefatos com arpejo cintilante;
-   - Alvorada triunfal e esgotamento da chama.
+2. **Efeitos e Música Gerados por Código, sem Arquivos Externos:**
+   - **Música Ambiente Contínua (`MusicPlayer`):** Sintetizada em tempo real via `AudioStream` da raylib com renovação assíncrona de buffers e fases contínuas, garantindo um loop fluido sem descontinuidades ou cortes audíveis. Combina drones graves senoidais com modulação de baixa frequência (LFO) e batimento sutil, acrescidos de notas esparsas em escala menor com envelope suave. A progressão entre as noites intensifica o andamento, tessitura e densidade harmônica; a pausa do jogo reduz o volume dinamicamente; e o desfecho da jornada é marcado por acordes temáticos de vitória ou derrota.
+   - **Efeitos Sonoros (`AudioManager`):** Sintetizados diretamente em memória por matrizes matemáticas (modulação de frequência, envelopes exponenciais de amplitude e ruído branco pseudoaleatório) encapsulados em recursos `Sound` via RAII. Abrangem dano sofrido, eliminação de sombras, clarão da lanterna, coleta de artefatos com sino cintilante e fanfarras de alvorada ou encerramento da chama.
+   - **Controle Global de Silenciamento:** A tecla `M` permite ligar e desligar instantaneamente todo o subsistema sonoro (música e efeitos) em qualquer cena, apresentando um indicador discreto em tela quando em modo mudo. Em ambientes sem dispositivo de áudio disponível, o jogo detecta a ausência e continua em execução estável sem emitir falhas.
 
 ---
 

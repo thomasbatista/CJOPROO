@@ -68,12 +68,31 @@ public:
      */
     void playGameOver();
 
+    /**
+     * @brief Verifica se os efeitos sonoros estão em modo mudo.
+     * @return Verdadeiro se o áudio estiver silenciado.
+     */
+    static bool isMuted();
+
+    /**
+     * @brief Define o estado de silenciamento dos efeitos sonoros.
+     * @param muted Verdadeiro para silenciar.
+     */
+    static void setMuted(bool muted);
+
+    /**
+     * @brief Alterna o estado de silenciamento dos efeitos sonoros.
+     */
+    static void toggleMute();
+
 private:
     void synthesizeAll();
     void unloadAll();
 
     static Sound synthesizeSound(float duration, float startFreq, float endFreq, float volume,
                                  int waveType);
+
+    static bool s_muted;
 
     bool m_initialized;
     Sound m_enemyKilledSound;
