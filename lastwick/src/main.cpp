@@ -9,15 +9,17 @@
  * @brief Ponto de entrada principal do jogo Last Wick.
  *
  * Configura a resolução da janela e taxa fixa de quadros a partir das constantes
- * de GameConfig, inicializa o dispositivo de áudio com liberação segura ao término,
- * instancia o gerenciador de cenas carregando a tela inicial e delega a execução
- * de cada quadro para o padrão State do SceneManager.
+ * de GameConfig, desativa a tecla ESC como saída padrão do raylib, inicializa
+ * o dispositivo de áudio com liberação segura ao término, instancia o gerenciador
+ * de cenas carregando a tela inicial e delega a execução de cada quadro para o
+ * padrão State do SceneManager.
  *
  * @return Código de término de execução do sistema operacional.
  */
 int main() {
     InitWindow(lastwick::GameConfig::kScreenWidth, lastwick::GameConfig::kScreenHeight,
                "Last Wick");
+    SetExitKey(KEY_NULL);
     SetTargetFPS(lastwick::GameConfig::kTargetFps);
 
     // Inicialização do subsistema de áudio da raylib

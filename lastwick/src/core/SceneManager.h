@@ -8,11 +8,16 @@
 namespace lastwick {
 
 /**
+ * @brief Estados possíveis da transição visual de desvanecimento entre cenas.
+ */
+enum class FadeState { None, FadeOut, FadeIn };
+
+/**
  * @brief Gerenciador de estados e transições de cenas do jogo.
  *
  * Implementa o padrão de projeto State para alternar entre diferentes fluxos
- * da aplicação, tratando de forma segura trocas pendentes de cena e controle
- * de encerramento do laço principal.
+ * da aplicação, tratando de forma segura trocas de cena com transição suave
+ * (fade out / fade in) e controle de encerramento do laço principal.
  */
 class SceneManager {
 public:
@@ -32,19 +37,19 @@ public:
     SceneManager& operator=(SceneManager&&) noexcept = default;
 
     /**
-     * @brief Agenda uma nova cena para se tornar a cena ativa.
+     * @brief Agenda uma nova cena para se tornar a cena ativa via transição de fade.
      * @param nextScene Instância exclusiva da próxima cena a ser carregada.
      */
     void changeScene(std::unique_ptr<Scene> nextScene);
 
     /**
-     * @brief Processa transições pendentes e atualiza a cena ativa.
+     * @brief Processa transições de fade pendentes e atualiza a cena ativa.
      * @param deltaTime Intervalo de tempo decorrido desde o último quadro em segundos.
      */
     void update(float deltaTime);
 
     /**
-     * @brief Renderiza a cena ativa.
+     * @brief Renderiza a cena ativa e a camada de sobreposição da transição.
      */
     void draw();
 
@@ -63,6 +68,9 @@ private:
     std::unique_ptr<Scene> m_currentScene;
     std::unique_ptr<Scene> m_pendingScene;
     bool m_shouldClose;
+
+    FadeState m_fadeState;
+    float m_fadeTimer;
 };
 
 }  // namespace lastwick

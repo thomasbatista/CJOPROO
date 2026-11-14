@@ -31,7 +31,7 @@ void GameOverScene::update(float deltaTime) {
     if (IsKeyPressed(KEY_R)) {
         RunState freshRun{};
         m_sceneManager.changeScene(std::make_unique<NightIntroScene>(m_sceneManager, freshRun));
-    } else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ESCAPE)) {
+    } else if (IsKeyPressed(KEY_ENTER)) {
         m_sceneManager.changeScene(std::make_unique<MenuScene>(m_sceneManager));
     }
 }
@@ -58,66 +58,49 @@ void GameOverScene::draw() {
     DrawText(titleText, static_cast<int>(centerX - titleWidth * 0.5f),
              static_cast<int>(centerY - 105.0f), titleFontSize, titleColor);
 
-    // Subtítulo descritivo
-    const char* subtitleText = m_runState.isVictory
-                                   ? "O guardiao resistiu as 3 noites e manteve o pavio aceso."
-                                   : "A escuridao da nevoa eterna consumiu o ultimo guardiao.";
-    int subFontSize = 20;
-    int subWidth = MeasureText(subtitleText, subFontSize);
-    DrawText(subtitleText, static_cast<int>(centerX - subWidth * 0.5f),
-             static_cast<int>(centerY - 45.0f), subFontSize, Color{190, 195, 205, 220});
-
     // Painel central de estatísticas
-    int panelWidth = 460;
-    int panelHeight = m_runState.isVictory ? 175 : 145;
-    int panelX = static_cast<int>(centerX - panelWidth * 0.5f);
-    int panelY = static_cast<int>(centerY - 10.0f);
+    int cardWidth = 460;
+    int cardHeight = 220;
+    int cardX = static_cast<int>(centerX - cardWidth * 0.5f);
+    int cardY = static_cast<int>(centerY - 30.0f);
 
-    DrawRectangle(panelX, panelY, panelWidth, panelHeight, Color{16, 18, 24, 220});
-    DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, Color{54, 62, 78, 190});
+    DrawRectangle(cardX, cardY, cardWidth, cardHeight, Color{18, 20, 26, 220});
+    DrawRectangleLines(cardX, cardY, cardWidth, cardHeight, Color{55, 62, 75, 190});
 
-    int nightsSurvived = m_runState.isVictory ? 3 : std::max(0, m_runState.currentNight - 1);
-    const char* nightsStr = TextFormat("Noites Sobrevividas : %d de 3", nightsSurvived);
-    DrawText(nightsStr, panelX + 24, panelY + 18, 17, Color{210, 215, 225, 240});
+    DrawText(TextFormat("Noites Sobrevividas: %d de 3",
+                        m_runState.isVictory ? 3 : m_runState.currentNight - 1),
+             cardX + 32, cardY + 28, 20, Color{215, 220, 230, 230});
 
-    const char* killsStr = TextFormat("Inimigos Derrotados : %d", m_runState.enemiesDefeated);
-    DrawText(killsStr, panelX + 24, panelY + 44, 17, Color{210, 215, 225, 240});
+    DrawText(TextFormat("Inimigos Abatidos:   %d", m_runState.enemiesDefeated), cardX + 32,
+             cardY + 62, 20, Color{215, 220, 230, 230});
 
-    int currentLineY = panelY + 70;
+    DrawText(TextFormat("Pontuacao Final:     %d", m_runState.score), cardX + 32, cardY + 98, 22,
+             Color{245, 215, 110, 255});
+
+    // Exibição do Recorde Histórico
+    const char* recordMsg = m_isNewRecord ? TextFormat("NOVO RECORDE: %d PONTOS!", m_highScore)
+                                          : TextFormat("Melhor Pontuacao: %d", m_highScore);
+    Color recordColor = m_isNewRecord ? Color{250, 190, 40, 255} : Color{170, 180, 195, 220};
+    DrawText(recordMsg, cardX + 32, cardY + 140, 20, recordColor);
+
     if (m_runState.isVictory) {
-        int lifeBonus = m_runState.lives * 50;
-        const char* bonusStr =
-            TextFormat("Bonus de Vidas      : +%d (%d x 50)", lifeBonus, m_runState.lives);
-        DrawText(bonusStr, panelX + 24, currentLineY, 17, Color{100, 220, 130, 240});
-        currentLineY += 26;
+        DrawText(TextFormat("Bonus de Vidas Restantes: +%d", m_runState.lives * 50), cardX + 32,
+                 cardY + 176, 17, Color{130, 215, 140, 230});
     }
 
-    const char* scoreStr = TextFormat("Pontuacao Final     : %d", m_runState.score);
-    DrawText(scoreStr, panelX + 24, currentLineY, 18, Color{245, 205, 80, 255});
-
-    const char* recordStr =
-        m_isNewRecord ? TextFormat("Recorde             : %d [NOVO RECORDE!]", m_highScore)
-                      : TextFormat("Recorde             : %d", m_highScore);
-    Color recordColor = m_isNewRecord ? Color{255, 215, 60, 255} : Color{180, 185, 195, 220};
-    DrawText(recordStr, panelX + 24, currentLineY + 26, 17, recordColor);
-
-    // Opções de ação
-    float alphaFactor = (std::sin(m_timer * 3.2f) + 1.0f) * 0.5f;
+    // Comandos de navegação com pulso luminoso
+    float alphaFactor = (std::sin(m_timer * 3.5f) + 1.0f) * 0.5f;
     unsigned char promptAlpha = static_cast<unsigned char>(140 + 115 * alphaFactor);
 
-    const char* retryText = "Pressione [R] para Nova Partida";
-    int retryFontSize = 24;
-    int retryWidth = MeasureText(retryText, retryFontSize);
-    DrawText(retryText, static_cast<int>(centerX - retryWidth * 0.5f),
-             static_cast<int>(centerY + panelHeight + 12.0f), retryFontSize,
-             Color{235, 195, 90, promptAlpha});
+    const char* restartPrompt = "Pressione R para Tentar Novamente";
+    int rWidth = MeasureText(restartPrompt, 22);
+    DrawText(restartPrompt, static_cast<int>(centerX - rWidth * 0.5f), cardY + cardHeight + 36, 22,
+             Color{230, 215, 150, promptAlpha});
 
-    const char* menuText = "Pressione [ENTER] para Retornar ao Menu";
-    int menuFontSize = 20;
-    int menuWidth = MeasureText(menuText, menuFontSize);
-    DrawText(menuText, static_cast<int>(centerX - menuWidth * 0.5f),
-             static_cast<int>(centerY + panelHeight + 50.0f), menuFontSize,
-             Color{160, 165, 175, 200});
+    const char* menuPrompt = "Pressione ENTER para o Menu Principal";
+    int mWidth = MeasureText(menuPrompt, 18);
+    DrawText(menuPrompt, static_cast<int>(centerX - mWidth * 0.5f), cardY + cardHeight + 72, 18,
+             Color{170, 175, 185, 200});
 }
 
 }  // namespace lastwick

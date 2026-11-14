@@ -30,6 +30,8 @@ add_executable(LastWick
     src/core/AudioManager.cpp
     src/core/EventBus.h
     src/core/EventBus.cpp
+    src/core/ParticleSystem.h
+    src/core/ParticleSystem.cpp
     src/core/Scene.h
     src/core/SceneManager.h
     src/core/SceneManager.cpp
@@ -80,3 +82,42 @@ target_compile_options(LastWick PRIVATE
 )
 
 target_link_libraries(LastWick PRIVATE raylib)
+
+# Suporte a testes automatizados com CTest
+enable_testing()
+
+add_executable(LastWickTests
+    tests/test_main.cpp
+    src/core/GameConfig.h
+    src/core/RunState.h
+    src/core/HighScoreStore.h
+    src/core/HighScoreStore.cpp
+    src/core/EventBus.h
+    src/core/EventBus.cpp
+    src/entities/Entity.h
+    src/entities/Entity.cpp
+    src/entities/Lantern.h
+    src/entities/Lantern.cpp
+    src/entities/Player.h
+    src/entities/Player.cpp
+    src/entities/Enemy.h
+    src/entities/Enemy.cpp
+    src/entities/Crawler.h
+    src/entities/Crawler.cpp
+    src/entities/Wisp.h
+    src/entities/Wisp.cpp
+    src/entities/Giant.h
+    src/entities/Giant.cpp
+    src/entities/EnemySpawner.h
+    src/entities/EnemySpawner.cpp
+)
+
+target_include_directories(LastWickTests PRIVATE src)
+
+target_compile_options(LastWickTests PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra>
+)
+
+target_link_libraries(LastWickTests PRIVATE raylib)
+
+add_test(NAME UnitTests COMMAND LastWickTests)

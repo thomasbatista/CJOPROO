@@ -61,14 +61,16 @@ void EnemySpawner::update(float deltaTime, Player& player, const Camera2D& camer
         // Verificação de colisão círculo-círculo com o jogador
         if (distToPlayer < (playerRadius + enemy->getRadius())) {
             if (player.hit(enemy->contactDamage())) {
-                eventBus.emit(Event{EventType::PlayerHit, enemy->contactDamage(), 0.0f});
+                eventBus.emit(Event{EventType::PlayerHit, enemy->contactDamage(), 0.0f,
+                                    enemy->getPosition()});
             }
         }
 
         // Verificação de eliminação por exposição à luz
         if (enemy->isDead()) {
             enemy->setActive(false);
-            eventBus.emit(Event{EventType::EnemyKilled, GameConfig::kPointsPerEnemyKill, 0.0f});
+            eventBus.emit(Event{EventType::EnemyKilled, GameConfig::kPointsPerEnemyKill, 0.0f,
+                                enemy->getPosition()});
         }
     }
 
@@ -94,7 +96,8 @@ void EnemySpawner::applyFlare(Vector2 center, float radius, float extraExposure,
             enemy->addExposure(extraExposure);
             if (enemy->isDead()) {
                 enemy->setActive(false);
-                eventBus.emit(Event{EventType::EnemyKilled, GameConfig::kPointsPerEnemyKill, 0.0f});
+                eventBus.emit(Event{EventType::EnemyKilled, GameConfig::kPointsPerEnemyKill, 0.0f,
+                                    enemy->getPosition()});
             }
         }
     }

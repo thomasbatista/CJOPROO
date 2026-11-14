@@ -98,10 +98,22 @@ public:
      */
     void setCurrentNight(int night);
 
+    /**
+     * @brief Sorteia o tipo de criatura a ser gerada segundo os pesos da noite informada.
+     * @param night Índice da noite em curso.
+     * @return Tipo de criatura selecionado.
+     */
+    EnemyType chooseEnemyTypeForNight(int night);
+
+    /**
+     * @brief Retorna o intervalo temporal entre gerações sucessivas de inimigos para a noite.
+     * @param night Índice da noite em curso.
+     * @return Intervalo em segundos.
+     */
+    float getSpawnIntervalForNight(int night) const;
+
 private:
     Vector2 computeSpawnPosition(const Camera2D& camera);
-    EnemyType chooseEnemyTypeForNight(int night);
-    float getSpawnIntervalForNight(int night) const;
 
     int m_currentNight;
     float m_spawnTimer;

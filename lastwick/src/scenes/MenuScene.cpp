@@ -24,8 +24,6 @@ void MenuScene::update(float deltaTime) {
     if (IsKeyPressed(KEY_ENTER)) {
         RunState initialRun{};
         m_sceneManager.changeScene(std::make_unique<NightIntroScene>(m_sceneManager, initialRun));
-    } else if (IsKeyPressed(KEY_ESCAPE)) {
-        m_sceneManager.requestClose();
     }
 }
 
@@ -73,7 +71,7 @@ void MenuScene::draw() {
              static_cast<int>(centerY + 72.0f), promptFontSize, Color{235, 190, 80, promptAlpha});
 
     // Painel inferior de controles resumidos
-    int boxWidth = 620;
+    int boxWidth = 560;
     int boxHeight = 115;
     int boxX = static_cast<int>(centerX - boxWidth * 0.5f);
     int boxY = screenHeight - 145;
@@ -86,8 +84,7 @@ void MenuScene::draw() {
              Color{210, 215, 225, 220});
     DrawText("Espaco        : Clarao da Lanterna (25 oleo, 6 s recarga)", boxX + 24, boxY + 66, 16,
              Color{210, 215, 225, 220});
-    DrawText("P ou ESC      : Pausar o Jogo", boxX + 24, boxY + 90, 16, Color{180, 190, 205, 200});
-    DrawText("ESC (Menu)    : Sair", boxX + 460, boxY + 42, 16, Color{160, 170, 185, 200});
+    DrawText("P             : Pausar o Jogo", boxX + 24, boxY + 90, 16, Color{180, 190, 205, 200});
 }
 
 }  // namespace lastwick

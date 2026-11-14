@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "raylib.h"
+
 namespace lastwick {
 
 /**
@@ -27,13 +29,14 @@ struct Event {
     EventType type;
     int intValue{0};
     float floatValue{0.0f};
+    Vector2 position{0.0f, 0.0f};
 };
 
 /**
  * @brief Barramento centralizado de eventos baseado no padrão Observer.
  *
  * Permite a comunicação desacoplada entre elementos da simulação (como
- * GameScene, Spawner e entidades) e componentes de interface e áudio.
+ * GameScene, Spawner e entidades) e componentes de interface, partículas e áudio.
  */
 class EventBus {
 public:

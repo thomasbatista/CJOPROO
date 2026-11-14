@@ -7,7 +7,8 @@ namespace lastwick {
  * @brief Constantes centrais de balanceamento e parâmetros de configuração do jogo.
  *
  * Centraliza dimensões de tela e mundo, velocidades de deslocamento, tempos de
- * recarga, atributos dos inimigos, parâmetros de pontuação, itens e progressão de noites.
+ * recarga, atributos dos inimigos, parâmetros de pontuação, itens, progressão de noites
+ * e temporizadores de efeitos visuais e transições.
  */
 struct GameConfig {
     // Dimensões de tela e taxa de quadros
@@ -95,6 +96,17 @@ struct GameConfig {
     static constexpr int kMaxActivePickups = 3;
     static constexpr float kPickupInteractionRadius = 22.0f;
     static constexpr float kPickupGlowRadius = 24.0f;
+
+    // Efeitos visuais e transições
+    static constexpr float kSceneFadeDuration = 0.30f;
+    static constexpr float kDamageFlashDuration = 0.20f;
+    static constexpr float kShakeDurationDamage = 0.25f;
+    static constexpr float kShakeIntensityDamage = 6.0f;
+    static constexpr float kShakeDurationFlare = 0.20f;
+    static constexpr float kShakeIntensityFlare = 4.0f;
+    static constexpr int kParticleEnemyExplosionCount = 14;
+    static constexpr int kParticlePickupSparksCount = 12;
+    static constexpr float kParticleMaxLifetime = 0.45f;
 };
 
 }  // namespace lastwick

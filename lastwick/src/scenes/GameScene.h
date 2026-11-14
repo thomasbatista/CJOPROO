@@ -6,6 +6,7 @@
 #include "core/AudioManager.h"
 #include "core/EventBus.h"
 #include "core/GameConfig.h"
+#include "core/ParticleSystem.h"
 #include "core/RaylibResource.h"
 #include "core/RunState.h"
 #include "core/Scene.h"
@@ -32,8 +33,9 @@ struct DeadTree {
  * @brief Cena principal de jogabilidade do Last Wick.
  *
  * Atua como orquestrador geral do jogo: delega inimigos ao EnemySpawner, itens
- * ao PickupSpawner, áudio ao AudioManager, e gerencia o jogador, a câmera, a
- * iluminação, o estado de pausa e a progressão de noites com RunState.
+ * ao PickupSpawner, partículas ao ParticleSystem, áudio ao AudioManager, e gerencia
+ * o jogador, a câmera com tremor (shake), a iluminação, o estado de pausa e a
+ * progressão de noites com RunState.
  */
 class GameScene : public Scene {
 public:
@@ -55,13 +57,13 @@ public:
     void init() override;
 
     /**
-     * @brief Atualiza a física do jogador, câmera, spawner e temporizador da noite.
+     * @brief Atualiza a física do jogador, câmera, spawner, partículas e temporizador da noite.
      * @param deltaTime Intervalo de tempo decorrido desde o último quadro em segundos.
      */
     void update(float deltaTime) override;
 
     /**
-     * @brief Renderiza o mundo do jogo, a camada de iluminação, os olhos das criaturas e o HUD.
+     * @brief Renderiza o mundo do jogo, partículas, iluminação, flash e HUD.
      */
     void draw() override;
 
@@ -82,6 +84,7 @@ private:
     EventBus m_eventBus;
     EnemySpawner m_enemySpawner;
     PickupSpawner m_pickupSpawner;
+    ParticleSystem m_particleSystem;
     AudioManager m_audioManager;
     HUD m_hud;
 
@@ -91,6 +94,10 @@ private:
     float m_flareRingRadius;
     float m_flareMaxRadius;
     float m_flareActiveTimer;
+
+    float m_damageFlashTimer;
+    float m_shakeTimer;
+    float m_shakeIntensity;
 };
 
 }  // namespace lastwick

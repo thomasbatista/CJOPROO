@@ -65,8 +65,9 @@ void PickupSpawner::update(float deltaTime, Player& player, EventBus& eventBus) 
         float dist = std::hypot(diffX, diffY);
 
         if (dist < (playerRadius + pickup->getRadius())) {
+            Vector2 collectedPos = pickup->getPosition();
             pickup->apply(player);
-            eventBus.emit(Event{EventType::PickupCollected, 0, 0.0f});
+            eventBus.emit(Event{EventType::PickupCollected, 0, 0.0f, collectedPos});
             pickup->setActive(false);
         }
     }
