@@ -80,12 +80,15 @@ void HUD::draw(const Player& player, float nightTimer, int currentNight, int tot
     }
 
     // 4. Orientação no canto inferior direito
-    DrawText("ESC: Menu  |  G: Teste Fim de Jogo", screenWidth - 250, screenHeight - 26, 12,
-             Color{130, 140, 155, 160});
+    DrawText("P / ESC: Pausa", screenWidth - 140, screenHeight - 26, 13, Color{150, 160, 175, 170});
 }
 
 int HUD::getScore() const {
     return m_score;
+}
+
+void HUD::setScore(int score) {
+    m_score = score;
 }
 
 void HUD::reset() {

@@ -10,7 +10,15 @@ namespace lastwick {
 /**
  * @brief Tipos de eventos suportados pelo barramento de mensagens.
  */
-enum class EventType { EnemyKilled, PlayerHit, FlareUsed, FuelEmpty };
+enum class EventType {
+    EnemyKilled,
+    PlayerHit,
+    FlareUsed,
+    FuelEmpty,
+    PickupCollected,
+    DawnReached,
+    GameOver
+};
 
 /**
  * @brief Estrutura de dados transmitida durante a emissão de um evento.
@@ -25,7 +33,7 @@ struct Event {
  * @brief Barramento centralizado de eventos baseado no padrão Observer.
  *
  * Permite a comunicação desacoplada entre elementos da simulação (como
- * GameScene, Spawner e entidades) e componentes de interface (HUD).
+ * GameScene, Spawner e entidades) e componentes de interface e áudio.
  */
 class EventBus {
 public:

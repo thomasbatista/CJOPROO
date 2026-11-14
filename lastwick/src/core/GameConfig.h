@@ -7,7 +7,7 @@ namespace lastwick {
  * @brief Constantes centrais de balanceamento e parâmetros de configuração do jogo.
  *
  * Centraliza dimensões de tela e mundo, velocidades de deslocamento, tempos de
- * recarga, atributos dos inimigos e parâmetros de pontuação, eliminando números mágicos.
+ * recarga, atributos dos inimigos, parâmetros de pontuação, itens e progressão de noites.
  */
 struct GameConfig {
     // Dimensões de tela e taxa de quadros
@@ -67,6 +67,10 @@ struct GameConfig {
     // Pontuação e ciclos de noite
     static constexpr int kPointsPerEnemyKill = 10;
     static constexpr float kNightDurationSeconds = 90.0f;
+    static constexpr int kNightClearBonusPoints = 100;
+    static constexpr int kPointsPerRemainingLife = 50;
+    static constexpr float kNightIntroDuration = 3.0f;
+    static constexpr int kTotalNights = 3;
 
     // Intervalos e proporções de surgimento por noite
     static constexpr float kNight1SpawnInterval = 2.5f;
@@ -79,6 +83,18 @@ struct GameConfig {
     static constexpr float kNight3CrawlerWeight = 0.40f;
     static constexpr float kNight3WispWeight = 0.40f;
     static constexpr float kNight3GiantWeight = 0.20f;
+
+    // Parâmetros dos itens coletáveis (Pickups)
+    static constexpr float kOilFlaskFuelBonus = 35.0f;
+    static constexpr float kShieldDuration = 6.0f;
+    static constexpr float kSpeedBoostMultiplier = 1.4f;
+    static constexpr float kSpeedBoostDuration = 6.0f;
+    static constexpr float kPickupLifetime = 15.0f;
+    static constexpr float kPickupMinSpawnInterval = 8.0f;
+    static constexpr float kPickupMaxSpawnInterval = 12.0f;
+    static constexpr int kMaxActivePickups = 3;
+    static constexpr float kPickupInteractionRadius = 22.0f;
+    static constexpr float kPickupGlowRadius = 24.0f;
 };
 
 }  // namespace lastwick

@@ -23,6 +23,11 @@ FetchContent_MakeAvailable(raylib)
 add_executable(LastWick
     src/main.cpp
     src/core/GameConfig.h
+    src/core/RunState.h
+    src/core/HighScoreStore.h
+    src/core/HighScoreStore.cpp
+    src/core/AudioManager.h
+    src/core/AudioManager.cpp
     src/core/EventBus.h
     src/core/EventBus.cpp
     src/core/Scene.h
@@ -46,10 +51,21 @@ add_executable(LastWick
     src/entities/EnemySpawner.h
     src/entities/EnemySpawner.cpp
     src/entities/Pickup.h
+    src/entities/Pickup.cpp
+    src/entities/OilFlask.h
+    src/entities/OilFlask.cpp
+    src/entities/Amulet.h
+    src/entities/Amulet.cpp
+    src/entities/Boots.h
+    src/entities/Boots.cpp
+    src/entities/PickupSpawner.h
+    src/entities/PickupSpawner.cpp
     src/scenes/HUD.h
     src/scenes/HUD.cpp
     src/scenes/MenuScene.h
     src/scenes/MenuScene.cpp
+    src/scenes/NightIntroScene.h
+    src/scenes/NightIntroScene.cpp
     src/scenes/GameScene.h
     src/scenes/GameScene.cpp
     src/scenes/GameOverScene.h

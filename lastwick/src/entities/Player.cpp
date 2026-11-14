@@ -16,6 +16,8 @@ Player::Player(Vector2 position, int lives, float speed)
       m_speed(speed),
       m_collisionRadius(GameConfig::kPlayerCollisionRadius),
       m_invulnerabilityTimer(0.0f),
+      m_shieldTimer(0.0f),
+      m_speedBoostTimer(0.0f),
       m_facingDirection{0.0f, 1.0f},
       m_minBound{GameConfig::kMapBoundaryMargin, GameConfig::kMapBoundaryMargin},
       m_maxBound{GameConfig::kMapWidth - GameConfig::kMapBoundaryMargin,
@@ -24,6 +26,12 @@ Player::Player(Vector2 position, int lives, float speed)
 void Player::update(float deltaTime) {
     if (m_invulnerabilityTimer > 0.0f) {
         m_invulnerabilityTimer = std::max(0.0f, m_invulnerabilityTimer - deltaTime);
+    }
+    if (m_shieldTimer > 0.0f) {
+        m_shieldTimer = std::max(0.0f, m_shieldTimer - deltaTime);
+    }
+    if (m_speedBoostTimer > 0.0f) {
+        m_speedBoostTimer = std::max(0.0f, m_speedBoostTimer - deltaTime);
     }
 
     float moveX = 0.0f;
@@ -50,8 +58,10 @@ void Player::update(float deltaTime) {
         m_facingDirection = {moveX, moveY};
     }
 
-    m_position.x += moveX * m_speed * deltaTime;
-    m_position.y += moveY * m_speed * deltaTime;
+    float currentSpeed = m_speed * (hasSpeedBoost() ? GameConfig::kSpeedBoostMultiplier : 1.0f);
+
+    m_position.x += moveX * currentSpeed * deltaTime;
+    m_position.y += moveY * currentSpeed * deltaTime;
 
     m_position.x = std::clamp(m_position.x, m_minBound.x, m_maxBound.x);
     m_position.y = std::clamp(m_position.y, m_minBound.y, m_maxBound.y);
@@ -64,8 +74,8 @@ void Player::update(float deltaTime) {
 }
 
 void Player::draw() const {
-    // Efeito piscante visual durante o tempo de invulnerabilidade
-    if (m_invulnerabilityTimer > 0.0f) {
+    // Efeito piscante visual durante o tempo de invulnerabilidade pós-dano
+    if (m_invulnerabilityTimer > 0.0f && !hasShield()) {
         float blinkCycle =
             std::sin(m_invulnerabilityTimer * GameConfig::kPlayerBlinkFrequency * 6.2831853f);
         if (blinkCycle < 0.0f) {
@@ -76,6 +86,22 @@ void Player::draw() const {
     // Sombra suave sob os pés do guardião
     DrawEllipse(static_cast<int>(m_position.x), static_cast<int>(m_position.y + 12.0f), 18.0f, 8.0f,
                 Color{0, 0, 0, 110});
+
+    // Anel místico de proteção do amuleto
+    if (hasShield()) {
+        float shieldPulse = std::sin(m_shieldTimer * 6.0f) * 2.0f;
+        DrawCircleLines(static_cast<int>(m_position.x), static_cast<int>(m_position.y),
+                        m_collisionRadius + 8.0f + shieldPulse, Color{60, 210, 255, 230});
+        DrawCircleLines(static_cast<int>(m_position.x), static_cast<int>(m_position.y),
+                        m_collisionRadius + 10.0f + shieldPulse, Color{130, 235, 255, 160});
+    }
+
+    // Brilho esmeralda de agilidade sob os pés ao usar as botas
+    if (hasSpeedBoost()) {
+        DrawCircleGradient(static_cast<int>(m_position.x), static_cast<int>(m_position.y + 8.0f),
+                           m_collisionRadius * 1.3f, Color{70, 230, 120, 90},
+                           Color{70, 230, 120, 0});
+    }
 
     // Manto do guardião (corpo)
     Color cloakColor{44, 53, 64, 255};
@@ -121,11 +147,30 @@ void Player::takeDamage(int amount) {
 }
 
 bool Player::hit(int damage) {
+    if (hasShield()) {
+        return false;
+    }
     if (isInvulnerable() || m_lives <= 0) {
         return false;
     }
     takeDamage(damage);
     return true;
+}
+
+void Player::grantShield(float duration) {
+    m_shieldTimer = std::max(m_shieldTimer, duration);
+}
+
+bool Player::hasShield() const {
+    return m_shieldTimer > 0.0f;
+}
+
+void Player::grantSpeedBoost(float duration) {
+    m_speedBoostTimer = std::max(m_speedBoostTimer, duration);
+}
+
+bool Player::hasSpeedBoost() const {
+    return m_speedBoostTimer > 0.0f;
 }
 
 bool Player::isInvulnerable() const {

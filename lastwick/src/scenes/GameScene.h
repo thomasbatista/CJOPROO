@@ -3,11 +3,14 @@
 
 #include <vector>
 
+#include "core/AudioManager.h"
 #include "core/EventBus.h"
 #include "core/GameConfig.h"
 #include "core/RaylibResource.h"
+#include "core/RunState.h"
 #include "core/Scene.h"
 #include "entities/EnemySpawner.h"
+#include "entities/PickupSpawner.h"
 #include "entities/Player.h"
 #include "raylib.h"
 #include "scenes/HUD.h"
@@ -28,16 +31,18 @@ struct DeadTree {
 /**
  * @brief Cena principal de jogabilidade do Last Wick.
  *
- * Atua como orquestrador geral: delega a simulação dos inimigos ao EnemySpawner,
- * a exibição de interface ao HUD, e gerencia o jogador, a câmera e a iluminação.
+ * Atua como orquestrador geral do jogo: delega inimigos ao EnemySpawner, itens
+ * ao PickupSpawner, áudio ao AudioManager, e gerencia o jogador, a câmera, a
+ * iluminação, o estado de pausa e a progressão de noites com RunState.
  */
 class GameScene : public Scene {
 public:
     /**
      * @brief Construtor da cena de jogabilidade.
      * @param sceneManager Referência ao gerenciador de cenas.
+     * @param runState Estado de jogo persistido da partida.
      */
-    explicit GameScene(SceneManager& sceneManager);
+    GameScene(SceneManager& sceneManager, RunState runState);
 
     /**
      * @brief Destrutor virtual padrão.
@@ -64,21 +69,24 @@ private:
     void drawMap() const;
     void drawDeadTree(const DeadTree& tree) const;
     void drawLightingMask();
-    void drawDawnOverlay() const;
+    void drawPauseOverlay() const;
 
     SceneManager& m_sceneManager;
+    RunState m_runState;
+
     Player m_player;
     Camera2D m_camera;
     RenderTextureWrapper m_lightMask;
     std::vector<DeadTree> m_deadTrees;
 
     EventBus m_eventBus;
-    EnemySpawner m_spawner;
+    EnemySpawner m_enemySpawner;
+    PickupSpawner m_pickupSpawner;
+    AudioManager m_audioManager;
     HUD m_hud;
 
     float m_nightTimer;
-    bool m_isDawn;
-    float m_dawnTimer;
+    bool m_isPaused;
 
     float m_flareRingRadius;
     float m_flareMaxRadius;

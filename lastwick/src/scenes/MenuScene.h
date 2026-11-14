@@ -10,15 +10,14 @@ class SceneManager;
 /**
  * @brief Cena de menu principal do jogo Last Wick.
  *
- * Apresenta a identidade visual da obra, exibe instruções preliminares
- * de controle e aguarda a confirmação do jogador via tecla ENTER para
- * transitar para a cena de jogabilidade.
+ * Apresenta a identidade visual da obra, exibe o recorde persistente gravado,
+ * os controles resumidos e aguarda o comando ENTER para iniciar a primeira noite.
  */
 class MenuScene : public Scene {
 public:
     /**
      * @brief Construtor da cena de menu.
-     * @param sceneManager Referência ao gerenciador de cenas para requisições de transição.
+     * @param sceneManager Referência ao gerenciador de cenas.
      */
     explicit MenuScene(SceneManager& sceneManager);
 
@@ -28,7 +27,7 @@ public:
     virtual ~MenuScene() = default;
 
     /**
-     * @brief Inicializa variáveis visuais e temporizadores do menu.
+     * @brief Inicializa variáveis visuais e carrega o recorde de pontuação.
      */
     void init() override;
 
@@ -39,13 +38,14 @@ public:
     void update(float deltaTime) override;
 
     /**
-     * @brief Renderiza a tela de apresentação, título e orientações.
+     * @brief Renderiza a tela de apresentação, título, recorde e orientações.
      */
     void draw() override;
 
 private:
     SceneManager& m_sceneManager;
     float m_pulseTimer;
+    int m_highScore;
 };
 
 }  // namespace lastwick

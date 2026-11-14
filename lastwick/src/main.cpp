@@ -1,7 +1,6 @@
 #include <memory>
 
 #include "core/GameConfig.h"
-#include "core/RaylibResource.h"
 #include "core/SceneManager.h"
 #include "raylib.h"
 #include "scenes/MenuScene.h"
@@ -10,8 +9,9 @@
  * @brief Ponto de entrada principal do jogo Last Wick.
  *
  * Configura a resolução da janela e taxa fixa de quadros a partir das constantes
- * de GameConfig, inicializa o gerenciador de cenas carregando a tela inicial e delega
- * a execução de cada quadro para o padrão State do SceneManager.
+ * de GameConfig, inicializa o dispositivo de áudio com liberação segura ao término,
+ * instancia o gerenciador de cenas carregando a tela inicial e delega a execução
+ * de cada quadro para o padrão State do SceneManager.
  *
  * @return Código de término de execução do sistema operacional.
  */
@@ -20,8 +20,8 @@ int main() {
                "Last Wick");
     SetTargetFPS(lastwick::GameConfig::kTargetFps);
 
-    // Inicialização segura de subsistemas via RAII
-    lastwick::AudioDeviceGuard audioGuard;
+    // Inicialização do subsistema de áudio da raylib
+    InitAudioDevice();
 
     // Gerenciamento centralizado do ciclo de vida das cenas
     lastwick::SceneManager sceneManager;
@@ -38,6 +38,8 @@ int main() {
         EndDrawing();
     }
 
+    // Liberação dos recursos de áudio e janela
+    CloseAudioDevice();
     CloseWindow();
     return 0;
 }

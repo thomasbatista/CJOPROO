@@ -7,21 +7,25 @@
 #include "core/SceneManager.h"
 #include "scenes/GameOverScene.h"
 #include "scenes/MenuScene.h"
+#include "scenes/NightIntroScene.h"
 
 namespace lastwick {
 
-GameScene::GameScene(SceneManager& sceneManager)
+GameScene::GameScene(SceneManager& sceneManager, RunState runState)
     : m_sceneManager(sceneManager),
-      m_player(Vector2{GameConfig::kMapWidth * 0.5f, GameConfig::kMapHeight * 0.5f}),
+      m_runState(runState),
+      m_player(Vector2{GameConfig::kMapWidth * 0.5f, GameConfig::kMapHeight * 0.5f},
+               runState.lives),
       m_camera{},
       m_lightMask(),
       m_deadTrees{},
       m_eventBus{},
-      m_spawner(1),
+      m_enemySpawner(runState.currentNight),
+      m_pickupSpawner(),
+      m_audioManager(),
       m_hud{},
       m_nightTimer(GameConfig::kNightDurationSeconds),
-      m_isDawn(false),
-      m_dawnTimer(0.0f),
+      m_isPaused(false),
       m_flareRingRadius(0.0f),
       m_flareMaxRadius(0.0f),
       m_flareActiveTimer(0.0f) {}
@@ -38,12 +42,11 @@ void GameScene::init() {
     m_player.setMapBounds(GameConfig::kMapBoundaryMargin, GameConfig::kMapBoundaryMargin,
                           GameConfig::kMapWidth - GameConfig::kMapBoundaryMargin,
                           GameConfig::kMapHeight - GameConfig::kMapBoundaryMargin);
-    m_player.setLives(GameConfig::kPlayerInitialLives);
+    m_player.setLives(m_runState.lives);
     m_player.getLantern().setFuel(GameConfig::kLanternInitialFuel);
 
     m_nightTimer = GameConfig::kNightDurationSeconds;
-    m_isDawn = false;
-    m_dawnTimer = 0.0f;
+    m_isPaused = false;
     m_flareActiveTimer = 0.0f;
 
     m_camera.offset = Vector2{screenWidth * 0.5f, screenHeight * 0.5f};
@@ -51,15 +54,26 @@ void GameScene::init() {
     m_camera.rotation = 0.0f;
     m_camera.zoom = 1.0f;
 
-    // Conexão dos ouvintes de evento com a interface
+    // Conexão dos ouvintes de evento com a interface, áudio e contagem da partida
     m_eventBus.clear();
     m_hud.reset();
+    m_hud.setScore(m_runState.score);
     m_hud.registerEvents(m_eventBus);
+    m_audioManager.registerEvents(m_eventBus);
 
-    m_spawner.clear();
-    m_spawner.setCurrentNight(1);
+    m_eventBus.subscribe(EventType::EnemyKilled, [this](const Event&) {
+        m_runState.enemiesDefeated++;
+        m_runState.score += GameConfig::kPointsPerEnemyKill;
+    });
 
-    // Geração determinística de árvores mortas espalhadas pelo cenário
+    m_eventBus.subscribe(EventType::PlayerHit,
+                         [this](const Event&) { m_runState.lives = m_player.getLives(); });
+
+    m_enemySpawner.clear();
+    m_enemySpawner.setCurrentNight(m_runState.currentNight);
+    m_pickupSpawner.clear();
+
+    // Geração determinística das árvores mortas no mapa
     m_deadTrees.clear();
     const int treeCount = 42;
     for (int i = 0; i < treeCount; ++i) {
@@ -80,34 +94,26 @@ void GameScene::init() {
 }
 
 void GameScene::update(float deltaTime) {
-    if (m_isDawn) {
-        m_dawnTimer += deltaTime;
-        if (m_dawnTimer >= 3.5f || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+    // 1. Processamento e controle do menu de pausa
+    if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
+        m_isPaused = !m_isPaused;
+    }
+
+    if (m_isPaused) {
+        if (IsKeyPressed(KEY_M)) {
             m_sceneManager.changeScene(std::make_unique<MenuScene>(m_sceneManager));
         }
         return;
     }
 
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        m_sceneManager.changeScene(std::make_unique<MenuScene>(m_sceneManager));
-        return;
-    }
-
-    // Tecla de atalho para teste de transição para a tela de encerramento
-    if (IsKeyPressed(KEY_G)) {
-        m_sceneManager.changeScene(std::make_unique<GameOverScene>(
-            m_sceneManager, "Transicao de teste para tela de encerramento."));
-        return;
-    }
-
-    // Disparo do clarão (Flare) com anel visual e dano de exposição a todos os inimigos no raio
+    // 2. Acionamento do clarão da lanterna (consome 25 combustível com 6 s de recarga)
     if (IsKeyPressed(KEY_SPACE)) {
         if (m_player.getLantern().triggerFlash()) {
             m_eventBus.emit(Event{EventType::FlareUsed, 0, 0.0f});
             float flareRadius =
                 m_player.getLantern().getRadius() * GameConfig::kFlareRadiusMultiplier;
-            m_spawner.applyFlare(m_player.getPosition(), flareRadius,
-                                 GameConfig::kFlareExtraExposure, m_eventBus);
+            m_enemySpawner.applyFlare(m_player.getPosition(), flareRadius,
+                                      GameConfig::kFlareExtraExposure, m_eventBus);
             m_flareRingRadius = 0.0f;
             m_flareMaxRadius = flareRadius;
             m_flareActiveTimer = GameConfig::kFlareVisualDuration;
@@ -120,32 +126,41 @@ void GameScene::update(float deltaTime) {
 
     m_player.update(deltaTime);
 
-    // Atualização da simulação de inimigos e geração de ondas
-    m_spawner.update(deltaTime, m_player, m_camera, m_eventBus);
+    // 3. Atualização das entidades delegadas aos seus respectivos gerenciadores
+    m_enemySpawner.update(deltaTime, m_player, m_camera, m_eventBus);
+    m_pickupSpawner.update(deltaTime, m_player, m_eventBus);
 
-    // Contagem regressiva da Noite 1
+    // 4. Contagem regressiva da noite em curso (90 s)
     m_nightTimer = std::max(0.0f, m_nightTimer - deltaTime);
     if (m_nightTimer <= 0.0f) {
-        m_isDawn = true;
-        m_dawnTimer = 0.0f;
+        m_runState.score += GameConfig::kNightClearBonusPoints;
+        m_runState.lives = m_player.getLives();
+        m_eventBus.emit(Event{EventType::DawnReached, 0, 0.0f});
+
+        if (m_runState.currentNight < GameConfig::kTotalNights) {
+            m_runState.currentNight++;
+            m_sceneManager.changeScene(
+                std::make_unique<NightIntroScene>(m_sceneManager, m_runState));
+        } else {
+            // Vitória total após a 3ª noite
+            int lifeBonus = m_runState.lives * GameConfig::kPointsPerRemainingLife;
+            m_runState.score += lifeBonus;
+            m_runState.isVictory = true;
+            m_sceneManager.changeScene(std::make_unique<GameOverScene>(m_sceneManager, m_runState));
+        }
         return;
     }
 
-    // Verificação das condições de derrota
-    if (m_player.getLantern().getFuel() <= 0.0f) {
-        m_eventBus.emit(Event{EventType::FuelEmpty, 0, 0.0f});
-        m_sceneManager.changeScene(std::make_unique<GameOverScene>(
-            m_sceneManager, "O oleo da lanterna se esgotou na escuridao eterna."));
+    // 5. Verificação das condições de derrota
+    if (m_player.getLantern().getFuel() <= 0.0f || m_player.getLives() <= 0) {
+        m_runState.isVictory = false;
+        m_runState.lives = m_player.getLives();
+        m_eventBus.emit(Event{EventType::GameOver, 0, 0.0f});
+        m_sceneManager.changeScene(std::make_unique<GameOverScene>(m_sceneManager, m_runState));
         return;
     }
 
-    if (m_player.getLives() <= 0) {
-        m_sceneManager.changeScene(std::make_unique<GameOverScene>(
-            m_sceneManager, "Suas vidas se extinguiram sob o ataque das sombras."));
-        return;
-    }
-
-    // Suavização do movimento da câmera 2D com contenção estrita no mapa
+    // 6. Suavização da câmera 2D mantendo os limites dentro do mapa
     float halfScreenWidth = GetScreenWidth() * 0.5f;
     float halfScreenHeight = GetScreenHeight() * 0.5f;
 
@@ -162,13 +177,14 @@ void GameScene::update(float deltaTime) {
 }
 
 void GameScene::draw() {
-    // 1. Renderização do mundo (solo, árvores, corpos dos inimigos e guardião)
+    // 1. Renderização do mundo físico (sob a máscara de escuridão)
     BeginMode2D(m_camera);
     drawMap();
-    m_spawner.draw();
+    m_pickupSpawner.draw();
+    m_enemySpawner.draw();
     m_player.draw();
 
-    // Efeito de anel visual expansivo do clarão
+    // Anel visual de choque expansivo do clarão
     if (m_flareActiveTimer > 0.0f) {
         float progress = 1.0f - (m_flareActiveTimer / GameConfig::kFlareVisualDuration);
         float currentRingRadius = m_flareMaxRadius * progress;
@@ -182,20 +198,21 @@ void GameScene::draw() {
     }
     EndMode2D();
 
-    // 2. Renderização da máscara de escuridão e iluminação da lanterna
+    // 2. Renderização da máscara de escuridão da névoa
     drawLightingMask();
 
-    // 3. Renderização dos olhos vermelhos penetrantes sobre a escuridão
+    // 3. Renderização dos elementos luminosos visíveis através da escuridão (olhos e itens)
     BeginMode2D(m_camera);
-    m_spawner.drawEyes();
+    m_enemySpawner.drawEyes();
+    m_pickupSpawner.drawGlow();
     EndMode2D();
 
-    // 4. Renderização da interface de usuário (HUD) em espaço de tela
-    m_hud.draw(m_player, m_nightTimer, 1, 1);
+    // 4. Renderização da interface de usuário em coordenadas de tela
+    m_hud.draw(m_player, m_nightTimer, m_runState.currentNight, GameConfig::kTotalNights);
 
-    // 5. Exibição da mensagem provisória de amanhecer ao concluir os 90 s
-    if (m_isDawn) {
-        drawDawnOverlay();
+    // 5. Sobreposição de pausa caso ativada
+    if (m_isPaused) {
+        drawPauseOverlay();
     }
 }
 
@@ -317,36 +334,41 @@ void GameScene::drawLightingMask() {
     EndBlendMode();
 }
 
-void GameScene::drawDawnOverlay() const {
+void GameScene::drawPauseOverlay() const {
     int screenWidth = GetScreenWidth();
     int screenHeight = GetScreenHeight();
 
-    DrawRectangle(0, 0, screenWidth, screenHeight, Color{10, 12, 16, 190});
+    // Escurecimento da tela com transparência
+    DrawRectangle(0, 0, screenWidth, screenHeight, Color{10, 12, 16, 195});
 
     float centerX = screenWidth * 0.5f;
-    float centerY = screenHeight * 0.44f;
+    float centerY = screenHeight * 0.45f;
 
-    // Brilho solar dourado suave anunciando o amanhecer
-    DrawCircleGradient(static_cast<int>(centerX), static_cast<int>(centerY), 260.0f,
-                       Color{240, 195, 75, 80}, Color{10, 12, 16, 0});
+    int panelWidth = 460;
+    int panelHeight = 210;
+    int panelX = static_cast<int>(centerX - panelWidth * 0.5f);
+    int panelY = static_cast<int>(centerY - panelHeight * 0.5f);
 
-    const char* dawnTitle = "Amanheceu";
-    int titleFontSize = 64;
-    int titleWidth = MeasureText(dawnTitle, titleFontSize);
-    DrawText(dawnTitle, static_cast<int>(centerX - titleWidth * 0.5f),
-             static_cast<int>(centerY - 60.0f), titleFontSize, Color{255, 230, 150, 255});
+    DrawRectangle(panelX, panelY, panelWidth, panelHeight, Color{18, 22, 30, 240});
+    DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, Color{60, 72, 92, 220});
 
-    const char* dawnSubtitle = "O pavio resistiu a primeira noite de nevoa.";
-    int subFontSize = 22;
-    int subWidth = MeasureText(dawnSubtitle, subFontSize);
-    DrawText(dawnSubtitle, static_cast<int>(centerX - subWidth * 0.5f),
-             static_cast<int>(centerY + 20.0f), subFontSize, Color{210, 215, 225, 220});
+    const char* pauseTitle = "JOGO PAUSADO";
+    int titleFontSize = 36;
+    int titleWidth = MeasureText(pauseTitle, titleFontSize);
+    DrawText(pauseTitle, static_cast<int>(centerX - titleWidth * 0.5f), panelY + 28, titleFontSize,
+             Color{240, 215, 130, 255});
 
-    const char* returnPrompt = "Retornando ao menu principal...";
-    int promptFontSize = 18;
-    int promptWidth = MeasureText(returnPrompt, promptFontSize);
-    DrawText(returnPrompt, static_cast<int>(centerX - promptWidth * 0.5f),
-             static_cast<int>(centerY + 65.0f), promptFontSize, Color{170, 180, 195, 190});
+    const char* resumeText = "[P / ESC] Continuar a Partida";
+    int resumeFontSize = 20;
+    int resumeWidth = MeasureText(resumeText, resumeFontSize);
+    DrawText(resumeText, static_cast<int>(centerX - resumeWidth * 0.5f), panelY + 95,
+             resumeFontSize, Color{210, 215, 225, 230});
+
+    const char* menuText = "[M] Retornar ao Menu Principal";
+    int menuFontSize = 20;
+    int menuWidth = MeasureText(menuText, menuFontSize);
+    DrawText(menuText, static_cast<int>(centerX - menuWidth * 0.5f), panelY + 135, menuFontSize,
+             Color{180, 185, 195, 200});
 }
 
 }  // namespace lastwick

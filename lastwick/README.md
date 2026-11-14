@@ -4,7 +4,7 @@
 
 ## Descricao e Conceito
 
-Em uma regiao ficticia envolta por brumas e nevoa perene, o ultimo guardiao de uma torre ancestral carrega a unica lanterna funcional e precisa manter seu pavio aceso durante noites de nevoa densa (90 segundos de sobrevivencia por noite).
+Em uma regiao ficticia envolta por brumas e nevoa perene, o ultimo guardiao de uma torre ancestral carrega a unica lanterna funcional e precisa manter seu pavio aceso durante tres noites sucessivas (90 segundos de sobrevivencia por noite, com dificuldade progressiva).
 
 O alcance visual e a seguranca do guardiao dependem diretamente do combustivel (oleo) da lanterna, que queima gradativamente. Fora da iluminacao, sombras se deslocam com agilidade multiplicada por 1.6. Ao penetrarem o halo de luz, as entidades sombrias sofrem exposicao luminosa progressiva ate se dissiparem. Em momentos criticos, o guardiao pode liberar um Clarao — uma detonacao concentrada de luz que atinge 1.8x o raio da lanterna e aplica exposicao extra a todos os inimigos no raio, consumindo 25 de combustivel com recarga de 6 segundos. O jogador inicia com 3 vidas e recebe uma janela de invulnerabilidade de 1.5 segundos ao sofrer dano.
 
@@ -16,24 +16,51 @@ O alcance visual e a seguranca do guardiao dependem diretamente do combustivel (
 
 Os corpos das criaturas permanecem ocultos sob a mascara de escuridao, revelando-se apenas sob a luz da lanterna, enquanto seus olhos avermelhados brilham diretamente atraves das sombras para sinalizar a aproximacao.
 
+## Itens Coletaveis (Pickups)
+
+Gerados aleatoriamente pelo `PickupSpawner` (Factory Method) a cada 8 a 12 segundos, com permanencia de 15 segundos no chao e limite de 3 itens simultaneos. Possuem brilho pulsante proprio visivel atraves da escuridao:
+
+- **OilFlask**: Frasco ancestral que restaura +35 de combustivel na lanterna (limitado ao maximo de 100).
+- **Amulet**: Amuleto protetor que concede escudo mistico de 6 segundos, ignorando qualquer dano de contato.
+- **Boots**: Botas aladas que amplificam a velocidade de locomocao em x1.4 por 6 segundos.
+
+## Progressao de Noites e Pontuacao
+
+- **RunState**: Estado persistente mantido entre as noites (pontuacao, vidas, noite atual e inimigos derrotados).
+- **NightIntroScene**: Exibe "Noite N" por 3 segundos antes do inicio de cada noite.
+- **Finalizacao da Noite**: Ao esgotar os 90 segundos de sobrevivencia, o jogador recebe +100 pontos de bonificacao, mantem vidas e pontuacao, restaura o combustivel para 100 e avanca para a noite seguinte.
+- **Vitoria Total**: Ao sobreviver a 3ª noite, concede um bonus adicional de +50 pontos por vida restante e transita para a tela de vitoria.
+- **Recorde Persistente (HighScoreStore)**: Leitura e escrita tolerante a falhas do recorde no arquivo `highscore.txt`.
+
+## Sistema de Audio Procedural (AudioManager)
+
+Sintese de audio inteiramente realizada em codigo C++ utilizando buffers de ondas senoidais, quadradas, arpejos e ruido modulado via `Wave` e `LoadSoundFromWave` da raylib, sem dependencia de arquivos de midia externos:
+
+- **Inimigo Derrotado**: Dissipacao de frequencia descendente com ruido.
+- **Jogador Atingido**: Impacto percussivo de onda quadrada.
+- **Clarao**: Detonacao luminosa ascendente.
+- **Item Coletado**: Arpejo de sino cristalino.
+- **Amanhecer**: Acorde maior triunfal de conclusao de noite.
+- **Derrota**: Tom sombrio menor de encerramento da chama.
+
 ## Controles
 
 - **W, A, S, D** ou **Setas do Teclado**: Movimentacao suave do guardiao (com normalizacao de diagonais)
 - **Barra de Espaco**: Acionamento do Clarao da lanterna (consome 25 de oleo e possui recarga de 6 s)
-- **ESC**: Retorno ao menu principal ou saida da aplicacao
-- **G**: Atalho de demonstracao para transicao rapida a tela de fim de jogo
+- **P** ou **ESC**: Alterna a tela de pausa com congelamento total da simulacao
+- **M (no menu de pausa)**: Retorna ao Menu Principal
+- **ENTER**: Avanca introducoes e confirma opcoes
+- **R (na tela final)**: Reinicia uma nova partida a partir da Noite 1
 
 ## Arquitetura de Software e Orientacao a Objetos
 
-A estrutura do projeto adota padroes de projeto consolidados:
-
-- **Abstracao e Polimorfismo de Entidades**: A classe abstrata `Entity` estabelece a base para coordenadas e atualizacao. `Enemy` estende `Entity` com metodos virtuais para perseguicao, acumulo de exposicao e dano de contato, servindo de base para `Crawler`, `Wisp` e `Giant`.
-- **Factory Method (EnemySpawner)**: Centraliza a logica de instanciacao das criaturas hostis atraves do metodo `createEnemy(EnemyType, Vector2)`, controlando taxas de surgimento fora do campo de visao da camera e respeitando o limite maximo de entidades ativas.
-- **Padrao Observer (EventBus)**: Barramento central desacoplado que notifica ouvintes sobre eventos do jogo (`EnemyKilled`, `PlayerHit`, `FlareUsed`, `FuelEmpty`). O componente `HUD` inscreve-se no barramento para contabilizar a pontuacao (10 pontos por baixa).
-- **Padrao State (Cenas)**: A interface `Scene` e o `SceneManager` coordenam o fluxo entre `MenuScene`, `GameScene` e `GameOverScene`.
-- **Composicao**: O `Player` compoe uma instancia dedicada de `Lantern`, responsavel pela gestao do oleo, raio visual e recarga do clarao.
-- **Centralizacao de Parametros (GameConfig)**: Todas as constantes de balanceamento e configuracao estao isoladas em `GameConfig.h` com identificadores `constexpr`.
-- **Gerenciamento Seguro de Recursos (RAII)**: Encapsulamento de recursos do raylib (`RenderTextureWrapper`, `AudioDeviceGuard`, `SoundWrapper`, `FontWrapper`) assegurando liberacao automatica de memoria de video e recursos do sistema.
+- **Abstracao e Polimorfismo de Entidades**: Classes abstratas `Entity`, `Enemy` e `Pickup` estendidas polimorficamente por `Player`, `Crawler`, `Wisp`, `Giant`, `OilFlask`, `Amulet` e `Boots`.
+- **Factory Method**: Implementado em `EnemySpawner::createEnemy` e `PickupSpawner::createPickup`.
+- **Padrao Observer**: `EventBus` centralizado com inscricoes desacopladas de `HUD` e `AudioManager`.
+- **Padrao State**: Gerenciador `SceneManager` intermediando `MenuScene`, `NightIntroScene`, `GameScene` e `GameOverScene`.
+- **Composicao**: `Player` compoe uma instancia dedicada de `Lantern`.
+- **Centralizacao de Parametros (GameConfig)**: Eliminacao de numeros magicos com constantes `constexpr`.
+- **Gerenciamento Seguro de Recursos (RAII)**: Envelopamento de texturas, recursos sonoros e audio.
 
 ## Estrutura de Diretorios
 
@@ -44,16 +71,25 @@ lastwick/
 ├── .clang-format         # Padronizacao de formatacao de codigo-fonte
 ├── assets/               # Recursos de midia externos do jogo
 └── src/
-    ├── main.cpp          # Ponto de entrada, configuracao da janela e laco principal
-    ├── core/             # Nucleo da aplicacao, configuracoes, eventos e cenas
+    ├── main.cpp          # Ponto de entrada, configuracao da janela e audio
+    ├── core/             # Nucleo da aplicacao, configuracoes, eventos, audio e cenas
+    │   ├── AudioManager.h
+    │   ├── AudioManager.cpp
     │   ├── EventBus.h
     │   ├── EventBus.cpp
     │   ├── GameConfig.h
+    │   ├── HighScoreStore.h
+    │   ├── HighScoreStore.cpp
     │   ├── RaylibResource.h
+    │   ├── RunState.h
     │   ├── Scene.h
     │   ├── SceneManager.h
     │   └── SceneManager.cpp
-    ├── entities/         # Entidades, componentes e gerador de inimigos
+    ├── entities/         # Entidades, componentes, inimigos e itens
+    │   ├── Amulet.h
+    │   ├── Amulet.cpp
+    │   ├── Boots.h
+    │   ├── Boots.cpp
     │   ├── Crawler.h
     │   ├── Crawler.cpp
     │   ├── Enemy.h
@@ -66,7 +102,12 @@ lastwick/
     │   ├── Giant.cpp
     │   ├── Lantern.h
     │   ├── Lantern.cpp
+    │   ├── OilFlask.h
+    │   ├── OilFlask.cpp
     │   ├── Pickup.h
+    │   ├── Pickup.cpp
+    │   ├── PickupSpawner.h
+    │   ├── PickupSpawner.cpp
     │   ├── Player.h
     │   ├── Player.cpp
     │   ├── Wisp.h
@@ -79,7 +120,9 @@ lastwick/
         ├── HUD.h
         ├── HUD.cpp
         ├── MenuScene.h
-        └── MenuScene.cpp
+        ├── MenuScene.cpp
+        ├── NightIntroScene.h
+        └── NightIntroScene.cpp
 ```
 
 ## Como Compilar

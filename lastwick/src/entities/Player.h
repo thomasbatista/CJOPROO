@@ -12,7 +12,7 @@ namespace lastwick {
  *
  * Herda de Entity e compõe uma Lantern. Realiza movimentação bidimensional
  * contínua com normalização vetorial, contenção estrita aos limites do mapa,
- * gerenciamento de vidas e estado temporário de invulnerabilidade com efeito piscante.
+ * gerenciamento de vidas, efeitos temporários de escudo místico e bônus de velocidade.
  */
 class Player : public Entity {
 public:
@@ -31,13 +31,13 @@ public:
     virtual ~Player() = default;
 
     /**
-     * @brief Processa entrada de comandos, atualiza posição e estados da lanterna.
+     * @brief Processa entrada de comandos, atualiza posição, estados da lanterna e bônus ativos.
      * @param deltaTime Intervalo de tempo decorrido no quadro atual em segundos.
      */
     void update(float deltaTime) override;
 
     /**
-     * @brief Renderiza a figura do guardião e sua lanterna empunhada.
+     * @brief Renderiza o guardião, a lanterna empunhada e os anéis visuais de bônus ativos.
      */
     void draw() const override;
 
@@ -57,14 +57,38 @@ public:
     void takeDamage(int amount);
 
     /**
-     * @brief Aplica dano de contato com verificação prévia de invulnerabilidade.
+     * @brief Aplica dano de contato com verificação prévia de escudo e invulnerabilidade.
      * @param damage Dano causado pelo inimigo.
      * @return Verdadeiro se o jogador efetivamente sofreu o dano.
      */
     bool hit(int damage);
 
     /**
-     * @brief Verifica se o jogador está em período transitório de invulnerabilidade.
+     * @brief Ativa o escudo de proteção contra qualquer dano.
+     * @param duration Duração do escudo em segundos.
+     */
+    void grantShield(float duration);
+
+    /**
+     * @brief Verifica se o escudo de proteção está ativo.
+     * @return Verdadeiro se o jogador estiver imune a dano por escudo.
+     */
+    bool hasShield() const;
+
+    /**
+     * @brief Ativa o acelerador de velocidade de locomoção.
+     * @param duration Duração do bônus em segundos.
+     */
+    void grantSpeedBoost(float duration);
+
+    /**
+     * @brief Verifica se o acelerador de velocidade está ativo.
+     * @return Verdadeiro se a velocidade estiver amplificada.
+     */
+    bool hasSpeedBoost() const;
+
+    /**
+     * @brief Verifica se o jogador está em período transitório de invulnerabilidade pós-dano.
      * @return Verdadeiro se não puder receber dano.
      */
     bool isInvulnerable() const;
@@ -112,6 +136,8 @@ private:
     float m_speed;
     float m_collisionRadius;
     float m_invulnerabilityTimer;
+    float m_shieldTimer;
+    float m_speedBoostTimer;
     Vector2 m_facingDirection;
     Vector2 m_minBound;
     Vector2 m_maxBound;

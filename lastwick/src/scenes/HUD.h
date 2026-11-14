@@ -47,6 +47,12 @@ public:
     int getScore() const;
 
     /**
+     * @brief Define a pontuação base a partir do RunState.
+     * @param score Pontuação inicial.
+     */
+    void setScore(int score);
+
+    /**
      * @brief Reinicia a pontuação do jogador.
      */
     void reset();
