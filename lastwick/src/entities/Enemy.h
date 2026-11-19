@@ -1,6 +1,9 @@
 #ifndef LASTWICK_ENTITIES_ENEMY_H
 #define LASTWICK_ENTITIES_ENEMY_H
 
+#include <memory>
+#include <vector>
+
 #include "entities/Entity.h"
 
 namespace lastwick {
@@ -72,6 +75,18 @@ public:
      * @param amount Quantidade de exposição a ser acrescida.
      */
     virtual void addExposure(float amount);
+
+    /**
+     * @brief Gancho chamado ao morrer, podendo inserir novos inimigos no vetor.
+     * @param spawned Vetor de destino para novos inimigos gerados.
+     */
+    virtual void onDeath(std::vector<std::unique_ptr<Enemy>>& spawned);
+
+    /**
+     * @brief Valor de pontos concedido ao eliminar este inimigo.
+     * @return Pontos obtidos pela eliminação.
+     */
+    virtual int pointValue() const;
 
     /**
      * @brief Obtém o raio de colisão do inimigo.

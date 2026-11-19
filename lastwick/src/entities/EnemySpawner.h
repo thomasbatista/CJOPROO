@@ -17,7 +17,7 @@ class Player;
 /**
  * @brief Tipos de entidades hostis instanciáveis pelo método de fábrica.
  */
-enum class EnemyType { Crawler, Wisp, Giant };
+enum class EnemyType { Crawler, Wisp, Giant, Splitter };
 
 /**
  * @brief Gerenciador de geração, atualização e ciclo de vida dos inimigos.

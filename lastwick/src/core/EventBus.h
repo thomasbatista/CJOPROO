@@ -23,7 +23,8 @@ enum class EventType {
     NightStarted,
     RunPaused,
     RunResumed,
-    RunEnded
+    RunEnded,
+    UpgradeChosen
 };
 
 /**

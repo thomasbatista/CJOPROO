@@ -15,6 +15,7 @@
 #include "entities/Player.h"
 #include "raylib.h"
 #include "scenes/HUD.h"
+#include "scenes/HintSystem.h"
 
 namespace lastwick {
 
@@ -34,8 +35,8 @@ struct DeadTree {
  *
  * Atua como orquestrador geral do jogo: delega inimigos ao EnemySpawner, itens
  * ao PickupSpawner, partículas ao ParticleSystem, áudio ao AudioManager, e gerencia
- * o jogador, a câmera com tremor (shake), a iluminação, o estado de pausa e a
- * progressão de noites com RunState.
+ * o guardião, a câmera com tremor (shake), a iluminação sequencial sem aninhamento,
+ * o sistema de dicas, a sobreposição de pausa e a apresentação em letterbox 16:9.
  */
 class GameScene : public Scene {
 public:
@@ -52,7 +53,7 @@ public:
     virtual ~GameScene() = default;
 
     /**
-     * @brief Inicializa o jogador, câmera, textura de luz, árvores e subsistemas.
+     * @brief Inicializa o jogador, câmera, texturas de luz e lógica, árvores e subsistemas.
      */
     void init() override;
 
@@ -63,14 +64,23 @@ public:
     void update(float deltaTime) override;
 
     /**
-     * @brief Renderiza o mundo do jogo, partículas, iluminação, flash e HUD.
+     * @brief Renderiza a cena em três passos sequenciais sem aninhamento de BeginTextureMode.
      */
     void draw() override;
 
+    /**
+     * @brief Indica que a GameScene renderiza o desvanecimento internamente na textura lógica.
+     * @return Verdadeiro para que o SceneManager não sobreponha fade duplicado na janela.
+     */
+    bool handlesOwnFade() const override { return true; }
+
 private:
+    void updateLightingMask();
+    void renderLogicalScene();
+    void presentLetterbox() const;
+
     void drawMap() const;
     void drawDeadTree(const DeadTree& tree) const;
-    void drawLightingMask();
     void drawPauseOverlay() const;
 
     SceneManager& m_sceneManager;
@@ -79,6 +89,7 @@ private:
     Player m_player;
     Camera2D m_camera;
     RenderTextureWrapper m_lightMask;
+    RenderTextureWrapper m_logicTarget;
     std::vector<DeadTree> m_deadTrees;
 
     EventBus m_eventBus;
@@ -87,6 +98,7 @@ private:
     ParticleSystem m_particleSystem;
     AudioManager m_audioManager;
     HUD m_hud;
+    HintSystem m_hintSystem;
 
     float m_nightTimer;
     bool m_isPaused;

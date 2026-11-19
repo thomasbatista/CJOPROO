@@ -16,8 +16,8 @@ void HUD::registerEvents(EventBus& eventBus) {
 }
 
 void HUD::draw(const Player& player, float nightTimer, int currentNight, int totalNights) const {
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
+    int screenWidth = GameConfig::kScreenWidth;
+    int screenHeight = GameConfig::kScreenHeight;
 
     // 1. Painel Superior Esquerdo: Combustível, Vidas (Corações) e Pontuação
     DrawRectangle(16, 16, 270, 118, Color{14, 18, 24, 215});
@@ -28,20 +28,21 @@ void HUD::draw(const Player& player, float nightTimer, int currentNight, int tot
     float fuelRatio = fuel / 100.0f;
     Color fuelColor = (fuel > 30.0f) ? Color{235, 175, 50, 255} : Color{220, 60, 45, 255};
 
-    DrawText("OLEO DA LANTERNA", 28, 24, 12, Color{190, 195, 205, 220});
+    DrawText("ÓLEO DA LANTERNA", 28, 24, 12, Color{190, 195, 205, 220});
     DrawRectangle(28, 40, 246, 14, Color{28, 34, 42, 255});
     DrawRectangle(28, 40, static_cast<int>(246.0f * fuelRatio), 14, fuelColor);
     DrawRectangleLines(28, 40, 246, 14, Color{70, 80, 95, 200});
 
-    // Corações de vida
+    // Corações de vida (suporta até kPlayerMaxLives corações)
     DrawText("VIDAS:", 28, 62, 13, Color{190, 195, 205, 220});
     int lives = player.getLives();
-    for (int i = 0; i < GameConfig::kPlayerInitialLives; ++i) {
-        int heartX = 92 + i * 28;
+    int maxHearts = GameConfig::kPlayerMaxLives;
+    for (int i = 0; i < maxHearts; ++i) {
+        int heartX = 84 + i * 24;
         int heartY = 70;
         bool isFilled = (i < lives);
         Color heartColor = isFilled ? Color{225, 45, 55, 255} : Color{80, 85, 95, 160};
-        drawHeart(heartX, heartY, 18.0f, heartColor, isFilled);
+        drawHeart(heartX, heartY, 17.0f, heartColor, isFilled);
     }
 
     // Pontuação
@@ -65,7 +66,7 @@ void HUD::draw(const Player& player, float nightTimer, int currentNight, int tot
     DrawRectangle(16, flashPanelY, 270, 48, Color{14, 18, 24, 215});
     DrawRectangleLines(16, flashPanelY, 270, 48, Color{52, 62, 78, 190});
 
-    DrawText("[ESPACO] CLARAO", 28, flashPanelY + 10, 12, Color{190, 195, 205, 220});
+    DrawText("[ESPAÇO] CLARÃO", 28, flashPanelY + 10, 12, Color{190, 195, 205, 220});
     bool flashReady = player.getLantern().isFlashReady();
     if (flashReady) {
         DrawText("PRONTO", 28, flashPanelY + 26, 14, Color{90, 220, 110, 255});

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "core/GameConfig.h"
+
 namespace lastwick {
 
 Enemy::Enemy(Vector2 position, float radius, float speed, float maxExposure, int contactDamage)
@@ -54,6 +56,12 @@ float Enemy::getExposureRatio() const {
 
 Vector2 Enemy::getFacingDirection() const {
     return m_facingDirection;
+}
+
+void Enemy::onDeath(std::vector<std::unique_ptr<Enemy>>&) {}
+
+int Enemy::pointValue() const {
+    return GameConfig::kPointsPerEnemyKill;
 }
 
 }  // namespace lastwick

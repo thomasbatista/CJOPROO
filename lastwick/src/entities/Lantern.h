@@ -85,11 +85,20 @@ public:
      */
     float getFlashCost() const;
 
+    /**
+     * @brief Aplica os modificadores de melhoria acumulados aos parâmetros da lanterna.
+     * @param burnRateMultiplier Multiplicador da taxa de consumo de combustível.
+     * @param cooldownMultiplier Multiplicador do tempo de recarga do clarão.
+     * @param radiusMultiplier Multiplicador do raio máximo de iluminação.
+     */
+    void applyModifiers(float burnRateMultiplier, float cooldownMultiplier, float radiusMultiplier);
+
 private:
     float m_fuel;
     float m_burnRate;
     float m_minRadius;
     float m_maxRadius;
+    float m_baseMaxRadius;
 
     float m_flashCost;
     float m_flashCooldownDuration;

@@ -1,12 +1,17 @@
 #include "scenes/GameScene.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 #include "core/SceneManager.h"
+#include "core/UpgradePool.h"
+#include "raylib.h"
+#include "rlgl.h"
 #include "scenes/GameOverScene.h"
 #include "scenes/MenuScene.h"
 #include "scenes/NightIntroScene.h"
+#include "scenes/UpgradeScene.h"
 
 namespace lastwick {
 
@@ -16,12 +21,15 @@ GameScene::GameScene(SceneManager& sceneManager, RunState runState)
       m_player(Vector2{GameConfig::kMapWidth * 0.5f, GameConfig::kMapHeight * 0.5f}),
       m_camera{},
       m_lightMask(),
+      m_logicTarget(),
+      m_deadTrees{},
       m_eventBus(),
       m_enemySpawner(),
       m_pickupSpawner(),
       m_particleSystem(),
       m_audioManager(),
       m_hud(),
+      m_hintSystem(),
       m_nightTimer(GameConfig::kNightDurationSeconds),
       m_isPaused(false),
       m_flareRingRadius(0.0f),
@@ -32,11 +40,11 @@ GameScene::GameScene(SceneManager& sceneManager, RunState runState)
       m_shakeIntensity(0.0f) {}
 
 void GameScene::init() {
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
-
     m_nightTimer = GameConfig::kNightDurationSeconds;
     m_isPaused = false;
+
+    // Aplicação dos modificadores de melhorias acumulados entre noites
+    m_player.applyUpgradeModifiers(m_runState.upgradeMods);
     m_player.setLives(m_runState.lives);
     m_player.getLantern().addFuel(100.0f);
 
@@ -47,12 +55,22 @@ void GameScene::init() {
     m_shakeTimer = 0.0f;
     m_shakeIntensity = 0.0f;
 
-    m_camera.offset = Vector2{screenWidth * 0.5f, screenHeight * 0.5f};
+    m_camera.offset = Vector2{GameConfig::kScreenWidth * 0.5f, GameConfig::kScreenHeight * 0.5f};
     m_camera.target = m_player.getPosition();
     m_camera.rotation = 0.0f;
     m_camera.zoom = 1.0f;
 
-    // Conexão dos ouvintes de evento com a interface, áudio, partículas e contagem da partida
+    // Inicialização única das duas RenderTextures com tamanho fixo 1280x720 e filtro bilinear
+    if (!m_lightMask.isLoaded()) {
+        m_lightMask.reset(GameConfig::kScreenWidth, GameConfig::kScreenHeight);
+        SetTextureFilter(m_lightMask.get().texture, TEXTURE_FILTER_BILINEAR);
+    }
+    if (!m_logicTarget.isLoaded()) {
+        m_logicTarget.reset(GameConfig::kScreenWidth, GameConfig::kScreenHeight);
+        SetTextureFilter(m_logicTarget.get().texture, TEXTURE_FILTER_BILINEAR);
+    }
+
+    // Conexão dos ouvintes de evento com interface, áudio, partículas e pontuação
     m_eventBus.clear();
     m_hud.reset();
     m_hud.setScore(m_runState.score);
@@ -62,9 +80,10 @@ void GameScene::init() {
     m_particleSystem.registerEvents(m_eventBus);
     m_sceneManager.getMusicPlayer().registerEvents(m_eventBus);
 
-    m_eventBus.subscribe(EventType::EnemyKilled, [this](const Event&) {
+    m_eventBus.subscribe(EventType::EnemyKilled, [this](const Event& event) {
         m_runState.enemiesDefeated++;
-        m_runState.score += GameConfig::kPointsPerEnemyKill;
+        int points = (event.intValue > 0) ? event.intValue : GameConfig::kPointsPerEnemyKill;
+        m_runState.score += points;
     });
 
     m_eventBus.subscribe(EventType::PlayerHit, [this](const Event&) {
@@ -79,6 +98,7 @@ void GameScene::init() {
     m_enemySpawner.clear();
     m_enemySpawner.setCurrentNight(m_runState.currentNight);
     m_pickupSpawner.clear();
+    m_hintSystem.reset();
 
     // Geração determinística das árvores mortas no mapa
     m_deadTrees.clear();
@@ -101,6 +121,11 @@ void GameScene::init() {
 }
 
 void GameScene::update(float deltaTime) {
+    // Alternância de modo tela cheia via tecla F11
+    if (IsKeyPressed(KEY_F11)) {
+        ToggleBorderlessWindowed();
+    }
+
     // 1. Processamento e controle do menu de pausa exclusivamente com a tecla P
     if (IsKeyPressed(KEY_P)) {
         m_isPaused = !m_isPaused;
@@ -118,7 +143,7 @@ void GameScene::update(float deltaTime) {
         return;
     }
 
-    // 2. Acionamento do clarão da lanterna (consome 25 combustível com 6 s de recarga)
+    // 2. Acionamento do clarão da lanterna (consome combustível com recarga)
     if (IsKeyPressed(KEY_SPACE)) {
         if (m_player.getLantern().triggerFlash()) {
             m_eventBus.emit(Event{EventType::FlareUsed, 0, 0.0f, m_player.getPosition()});
@@ -155,7 +180,10 @@ void GameScene::update(float deltaTime) {
     m_enemySpawner.update(deltaTime, m_player, m_camera, m_eventBus);
     m_pickupSpawner.update(deltaTime, m_player, m_eventBus);
 
-    // 4. Contagem regressiva da noite em curso (90 s)
+    // 4. Atualização das dicas contextuais na primeira noite
+    m_hintSystem.update(deltaTime, m_runState.currentNight, m_nightTimer);
+
+    // 5. Contagem regressiva da noite em curso (90 s)
     m_nightTimer = std::max(0.0f, m_nightTimer - deltaTime);
     if (m_nightTimer <= 0.0f) {
         m_runState.score += GameConfig::kNightClearBonusPoints;
@@ -164,8 +192,14 @@ void GameScene::update(float deltaTime) {
 
         if (m_runState.currentNight < GameConfig::kTotalNights) {
             m_runState.currentNight++;
-            m_sceneManager.changeScene(
-                std::make_unique<NightIntroScene>(m_sceneManager, m_runState));
+            auto upgrades = UpgradePool::drawThree(m_runState.upgradeCounts);
+            if (!upgrades.empty()) {
+                m_sceneManager.changeScene(std::make_unique<UpgradeScene>(
+                    m_sceneManager, m_runState, std::move(upgrades)));
+            } else {
+                m_sceneManager.changeScene(
+                    std::make_unique<NightIntroScene>(m_sceneManager, m_runState));
+            }
         } else {
             // Vitória total após a 3ª noite
             int lifeBonus = m_runState.lives * GameConfig::kPointsPerRemainingLife;
@@ -177,7 +211,7 @@ void GameScene::update(float deltaTime) {
         return;
     }
 
-    // 5. Verificação das condições de derrota
+    // 6. Verificação das condições de derrota
     if (m_player.getLantern().getFuel() <= 0.0f || m_player.getLives() <= 0) {
         m_runState.isVictory = false;
         m_runState.lives = m_player.getLives();
@@ -187,9 +221,9 @@ void GameScene::update(float deltaTime) {
         return;
     }
 
-    // 6. Suavização da câmera 2D mantendo os limites dentro do mapa com tremor discreto
-    float halfScreenWidth = GetScreenWidth() * 0.5f;
-    float halfScreenHeight = GetScreenHeight() * 0.5f;
+    // 7. Suavização da câmera 2D mantendo os limites dentro do mapa com tremor discreto
+    float halfScreenWidth = GameConfig::kScreenWidth * 0.5f;
+    float halfScreenHeight = GameConfig::kScreenHeight * 0.5f;
 
     float desiredX = m_player.getPosition().x;
     float desiredY = m_player.getPosition().y;
@@ -215,7 +249,48 @@ void GameScene::update(float deltaTime) {
 }
 
 void GameScene::draw() {
-    // 1. Renderização do mundo físico (sob a máscara de escuridão)
+    // 1. Pré-passo isolado: renderiza a máscara de luz sem nenhum outro modo ativo
+    updateLightingMask();
+
+    // 2. Passo lógico: renderiza o mundo, máscara, HUD e pós-processamento no alvo 1280x720
+    renderLogicalScene();
+
+    // 3. Passo final: desenha o alvo lógico escalado com letterbox 16:9 na janela
+    presentLetterbox();
+}
+
+void GameScene::updateLightingMask() {
+    BeginTextureMode(m_lightMask.get());
+
+    // Cor da escuridão densa da névoa (alpha 245 de 255 permite visibilidade sutil do mapa no breu)
+    Color ambientDarkness{10, 12, 18, 245};
+    ClearBackground(ambientDarkness);
+
+    Vector2 playerScreenPos = GetWorldToScreen2D(m_player.getPosition(), m_camera);
+    float lightRadius = m_player.getLantern().getRadius();
+
+    // Recorta o furo suave de luz na máscara usando fatores customizados que zeram o canal alpha
+    rlSetBlendFactors(RL_ZERO, RL_ONE_MINUS_SRC_ALPHA, RL_FUNC_ADD);
+    rlSetBlendMode(RL_BLEND_CUSTOM);
+
+    // Gradiente externo de transição suave
+    DrawCircleGradient(static_cast<int>(playerScreenPos.x), static_cast<int>(playerScreenPos.y),
+                       lightRadius, Color{255, 255, 255, 255}, Color{255, 255, 255, 0});
+
+    // Núcleo interno de transparência plena ao redor do guardião
+    DrawCircleGradient(static_cast<int>(playerScreenPos.x), static_cast<int>(playerScreenPos.y),
+                       lightRadius * 0.45f, Color{255, 255, 255, 255}, Color{255, 255, 255, 255});
+
+    rlSetBlendMode(RL_BLEND_ALPHA);
+
+    EndTextureMode();
+}
+
+void GameScene::renderLogicalScene() {
+    BeginTextureMode(m_logicTarget.get());
+    ClearBackground(Color{12, 14, 20, 255});
+
+    // 1. Desenho do mundo físico e entidades vivas sob a névoa
     BeginMode2D(m_camera);
     drawMap();
     m_pickupSpawner.draw();
@@ -237,64 +312,112 @@ void GameScene::draw() {
     }
     EndMode2D();
 
-    // 2. Renderização da máscara de escuridão da névoa
-    drawLightingMask();
+    // 2. Sobreposição da máscara de escuridão usando mistura alpha normal e inversão vertical
+    Rectangle maskSrcRec{0.0f, 0.0f, static_cast<float>(GameConfig::kScreenWidth),
+                         -static_cast<float>(GameConfig::kScreenHeight)};
+    Rectangle maskDstRec{0.0f, 0.0f, static_cast<float>(GameConfig::kScreenWidth),
+                         static_cast<float>(GameConfig::kScreenHeight)};
+    DrawTexturePro(m_lightMask.get().texture, maskSrcRec, maskDstRec, Vector2{0.0f, 0.0f}, 0.0f,
+                   WHITE);
 
-    // 3. Renderização dos elementos luminosos visíveis através da escuridão (olhos e itens)
+    // 3. Brilho aditivo dourado da lanterna no centro do halo de iluminação
+    Vector2 playerScreenPos = GetWorldToScreen2D(m_player.getPosition(), m_camera);
+    float lightRadius = m_player.getLantern().getRadius();
+    bool isFlash = m_player.getLantern().isFlashActive();
+
+    BeginBlendMode(BLEND_ADD_COLORS);
+    Color additiveGlow = isFlash ? Color{75, 70, 50, 75} : Color{45, 35, 15, 35};
+    DrawCircleGradient(static_cast<int>(playerScreenPos.x), static_cast<int>(playerScreenPos.y),
+                       lightRadius * 0.5f, additiveGlow, Color{0, 0, 0, 0});
+    EndBlendMode();
+
+    // 4. Elementos visíveis no escuro (olhos vermelhos e resplendor dos itens)
     BeginMode2D(m_camera);
     m_enemySpawner.drawEyes();
     m_pickupSpawner.drawGlow();
     EndMode2D();
 
-    // 4. Flash vermelho curto na tela ao sofrer dano
+    // 5. Flash vermelho de impacto ao sofrer dano
     if (m_damageFlashTimer > 0.0f) {
-        float progress = m_damageFlashTimer / GameConfig::kDamageFlashDuration;
-        unsigned char flashAlpha = static_cast<unsigned char>(110.0f * progress);
-        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Color{220, 20, 20, flashAlpha});
+        float flashAlpha = m_damageFlashTimer / GameConfig::kDamageFlashDuration;
+        unsigned char alpha = static_cast<unsigned char>(110.0f * flashAlpha);
+        DrawRectangle(0, 0, GameConfig::kScreenWidth, GameConfig::kScreenHeight,
+                      Color{180, 20, 20, alpha});
     }
 
-    // 5. Renderização da interface de usuário em coordenadas de tela
+    // 6. Interface em tela (HUD) e sistema de dicas contextuais
     m_hud.draw(m_player, m_nightTimer, m_runState.currentNight, GameConfig::kTotalNights);
+    m_hintSystem.draw();
 
-    // 6. Sobreposição de pausa caso ativada
+    // 7. Painel de pausa
     if (m_isPaused) {
         drawPauseOverlay();
     }
+
+    // 8. Efeito visual de desvanecimento (fade) interno
+    float fadeAlpha = m_sceneManager.getFadeAlpha();
+    if (fadeAlpha > 0.001f) {
+        DrawRectangle(0, 0, GameConfig::kScreenWidth, GameConfig::kScreenHeight,
+                      Fade(BLACK, fadeAlpha));
+    }
+
+    EndTextureMode();
+}
+
+void GameScene::presentLetterbox() const {
+    ClearBackground(BLACK);
+
+    int winWidth = GetScreenWidth();
+    int winHeight = GetScreenHeight();
+
+    float scale = std::min(static_cast<float>(winWidth) / GameConfig::kScreenWidth,
+                           static_cast<float>(winHeight) / GameConfig::kScreenHeight);
+    float destW = GameConfig::kScreenWidth * scale;
+    float destH = GameConfig::kScreenHeight * scale;
+    float destX = (winWidth - destW) * 0.5f;
+    float destY = (winHeight - destH) * 0.5f;
+
+    Rectangle sceneSrcRec{0.0f, 0.0f, static_cast<float>(GameConfig::kScreenWidth),
+                          -static_cast<float>(GameConfig::kScreenHeight)};
+    Rectangle sceneDstRec{destX, destY, destW, destH};
+
+    DrawTexturePro(m_logicTarget.get().texture, sceneSrcRec, sceneDstRec, Vector2{0.0f, 0.0f}, 0.0f,
+                   WHITE);
 }
 
 void GameScene::drawMap() const {
-    ClearBackground(Color{22, 26, 28, 255});
+    Color groundColor{22, 28, 36, 255};
+    Color gridColor{30, 38, 48, 255};
+    Color borderColor{55, 68, 85, 255};
 
-    const int tileSize = 120;
-    int cols = static_cast<int>(GameConfig::kMapWidth) / tileSize;
-    int rows = static_cast<int>(GameConfig::kMapHeight) / tileSize;
+    DrawRectangle(0, 0, static_cast<int>(GameConfig::kMapWidth),
+                  static_cast<int>(GameConfig::kMapHeight), groundColor);
 
-    for (int y = 0; y < rows; ++y) {
-        for (int x = 0; x < cols; ++x) {
-            if ((x + y) % 2 == 0) {
-                DrawRectangle(x * tileSize, y * tileSize, tileSize, tileSize,
-                              Color{26, 31, 34, 255});
-            }
-        }
+    const float tileSize = 96.0f;
+    for (float x = 0; x < GameConfig::kMapWidth; x += tileSize) {
+        DrawLineV(Vector2{x, 0}, Vector2{x, GameConfig::kMapHeight}, gridColor);
+    }
+    for (float y = 0; y < GameConfig::kMapHeight; y += tileSize) {
+        DrawLineV(Vector2{0, y}, Vector2{GameConfig::kMapWidth, y}, gridColor);
     }
 
-    DrawRectangleLinesEx(Rectangle{0.0f, 0.0f, GameConfig::kMapWidth, GameConfig::kMapHeight},
-                         12.0f, Color{45, 52, 58, 255});
+    // Torre ancestral no centro do mapa
+    float towerCenterX = GameConfig::kMapWidth * 0.5f;
+    float towerCenterY = GameConfig::kMapHeight * 0.5f;
 
-    Vector2 center{GameConfig::kMapWidth * 0.5f, GameConfig::kMapHeight * 0.5f};
-    DrawCircle(static_cast<int>(center.x), static_cast<int>(center.y), 150.0f,
-               Color{34, 39, 44, 255});
-    DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), 150.0f,
-                    Color{55, 64, 72, 255});
-
-    DrawCircle(static_cast<int>(center.x), static_cast<int>(center.y), 55.0f,
-               Color{48, 55, 62, 255});
-    DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), 55.0f,
-                    Color{75, 85, 96, 255});
+    DrawCircle(static_cast<int>(towerCenterX), static_cast<int>(towerCenterY), 70.0f,
+               Color{15, 18, 24, 255});
+    DrawCircleLines(static_cast<int>(towerCenterX), static_cast<int>(towerCenterY), 70.0f,
+                    Color{70, 85, 105, 255});
+    DrawCircle(static_cast<int>(towerCenterX), static_cast<int>(towerCenterY), 34.0f,
+               Color{35, 42, 55, 255});
 
     for (const auto& tree : m_deadTrees) {
         drawDeadTree(tree);
     }
+
+    DrawRectangleLinesEx(Rectangle{0, 0, GameConfig::kMapWidth, GameConfig::kMapHeight},
+                         GameConfig::kMapBoundaryMargin, borderColor);
 }
 
 void GameScene::drawDeadTree(const DeadTree& tree) const {
@@ -302,17 +425,14 @@ void GameScene::drawDeadTree(const DeadTree& tree) const {
     float y = tree.position.y;
     float s = tree.scale;
 
-    Color trunkColor{36, 28, 24, 255};
-    Color branchColor{48, 38, 32, 255};
+    Color trunkColor{32, 26, 24, 255};
+    Color branchColor{24, 20, 18, 255};
 
-    DrawLineEx(Vector2{x - 14.0f * s, y + 8.0f * s}, Vector2{x + 2.0f * s, y}, 3.0f * s,
-               trunkColor);
-    DrawLineEx(Vector2{x + 14.0f * s, y + 7.0f * s}, Vector2{x - 2.0f * s, y}, 3.0f * s,
-               trunkColor);
+    DrawEllipse(static_cast<int>(x), static_cast<int>(y + 4.0f * s), 16.0f * s, 7.0f * s,
+                Color{0, 0, 0, 90});
 
-    DrawLineEx(Vector2{x, y + 2.0f * s}, Vector2{x - 3.0f * s, y - 28.0f * s}, 7.0f * s,
-               trunkColor);
-    DrawLineEx(Vector2{x - 3.0f * s, y - 28.0f * s}, Vector2{x + 2.0f * s, y - 56.0f * s}, 5.0f * s,
+    DrawLineEx(Vector2{x, y}, Vector2{x, y - 48.0f * s}, 7.0f * s, trunkColor);
+    DrawLineEx(Vector2{x, y - 48.0f * s}, Vector2{x - 2.0f * s, y - 78.0f * s}, 5.0f * s,
                trunkColor);
 
     int seed = tree.branchSeed;
@@ -336,90 +456,61 @@ void GameScene::drawDeadTree(const DeadTree& tree) const {
                branchColor);
 }
 
-void GameScene::drawLightingMask() {
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
-
-    if (!m_lightMask.isLoaded()) {
-        m_lightMask.reset(screenWidth, screenHeight);
-    }
-
-    Vector2 playerScreenPos = GetWorldToScreen2D(m_player.getPosition(), m_camera);
-    float lightRadius = m_player.getLantern().getRadius();
-    bool isFlash = m_player.getLantern().isFlashActive();
-
-    // 1. Renderiza o degradê luminoso no alvo de textura secundária
-    BeginTextureMode(m_lightMask.get());
-
-    Color ambientDarkness{12, 14, 20, 255};
-    ClearBackground(ambientDarkness);
-
-    Color lightOuterColor = isFlash ? Color{255, 255, 240, 255} : Color{255, 230, 160, 255};
-
-    DrawCircleGradient(static_cast<int>(playerScreenPos.x), static_cast<int>(playerScreenPos.y),
-                       lightRadius, lightOuterColor, ambientDarkness);
-
-    DrawCircleGradient(static_cast<int>(playerScreenPos.x), static_cast<int>(playerScreenPos.y),
-                       lightRadius * 0.42f, Color{255, 250, 230, 255}, lightOuterColor);
-
-    EndTextureMode();
-
-    // 2. Aplica a máscara multiplicativa sobre o mundo renderizado
-    BeginBlendMode(BLEND_MULTIPLIED);
-    Rectangle srcRec{0.0f, 0.0f, static_cast<float>(m_lightMask.get().texture.width),
-                     -static_cast<float>(m_lightMask.get().texture.height)};
-    Rectangle dstRec{0.0f, 0.0f, static_cast<float>(screenWidth), static_cast<float>(screenHeight)};
-    DrawTexturePro(m_lightMask.get().texture, srcRec, dstRec, Vector2{0.0f, 0.0f}, 0.0f, WHITE);
-    EndBlendMode();
-
-    // 3. Efeito complementar de brilho aditivo da lanterna
-    BeginBlendMode(BLEND_ADD_COLORS);
-    Color additiveGlow = isFlash ? Color{60, 55, 45, 60} : Color{35, 25, 10, 30};
-    DrawCircleGradient(static_cast<int>(playerScreenPos.x), static_cast<int>(playerScreenPos.y),
-                       lightRadius * 0.5f, additiveGlow, Color{0, 0, 0, 0});
-    EndBlendMode();
-}
-
 void GameScene::drawPauseOverlay() const {
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
+    int screenWidth = GameConfig::kScreenWidth;
+    int screenHeight = GameConfig::kScreenHeight;
 
     // Escurecimento da tela com transparência
     DrawRectangle(0, 0, screenWidth, screenHeight, Color{10, 12, 16, 195});
 
     float centerX = screenWidth * 0.5f;
-    float centerY = screenHeight * 0.45f;
+    float centerY = screenHeight * 0.46f;
 
-    int panelWidth = 460;
-    int panelHeight = 210;
+    int panelWidth = 520;
+    int panelHeight = 310;
     int panelX = static_cast<int>(centerX - panelWidth * 0.5f);
     int panelY = static_cast<int>(centerY - panelHeight * 0.5f);
 
-    DrawRectangle(panelX, panelY, panelWidth, panelHeight, Color{18, 22, 30, 240});
+    DrawRectangle(panelX, panelY, panelWidth, panelHeight, Color{18, 22, 30, 245});
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, Color{60, 72, 92, 220});
 
     const char* pauseTitle = "JOGO PAUSADO";
-    int titleFontSize = 36;
+    int titleFontSize = 32;
     int titleWidth = MeasureText(pauseTitle, titleFontSize);
-    DrawText(pauseTitle, static_cast<int>(centerX - titleWidth * 0.5f), panelY + 24, titleFontSize,
+    DrawText(pauseTitle, static_cast<int>(centerX - titleWidth * 0.5f), panelY + 20, titleFontSize,
              Color{240, 215, 130, 255});
 
-    const char* resumeText = "[P] Continuar a Partida";
-    int resumeFontSize = 19;
-    int resumeWidth = MeasureText(resumeText, resumeFontSize);
-    DrawText(resumeText, static_cast<int>(centerX - resumeWidth * 0.5f), panelY + 82,
-             resumeFontSize, Color{210, 215, 225, 230});
+    // Seção de melhorias ativas
+    DrawText("Melhorias Ativas:", panelX + 32, panelY + 68, 16, Color{220, 225, 235, 240});
 
-    const char* soundText = "[M] Alternar Som";
-    int soundFontSize = 19;
-    int soundWidth = MeasureText(soundText, soundFontSize);
-    DrawText(soundText, static_cast<int>(centerX - soundWidth * 0.5f), panelY + 118, soundFontSize,
-             Color{195, 205, 220, 220});
+    constexpr std::array<const char*, 5> kUpgradeNames = {
+        "Luz Ampliada", "Clarão Veloz", "Vida Extra", "Chama Duradoura", "Agilidade"};
 
-    const char* menuText = "[Q] Retornar ao Menu Principal";
-    int menuFontSize = 19;
-    int menuWidth = MeasureText(menuText, menuFontSize);
-    DrawText(menuText, static_cast<int>(centerX - menuWidth * 0.5f), panelY + 154, menuFontSize,
+    int activeCount = 0;
+    int upgradeTextY = panelY + 94;
+    for (int i = 0; i < 5; ++i) {
+        int level = m_runState.upgradeCounts[i];
+        if (level > 0) {
+            const char* upText = TextFormat("• %s (Nível %d)", kUpgradeNames[i], level);
+            DrawText(upText, panelX + 42, upgradeTextY, 14, Color{240, 205, 90, 230});
+            upgradeTextY += 20;
+            activeCount++;
+        }
+    }
+    if (activeCount == 0) {
+        DrawText("• Nenhuma melhoria adquirida ainda", panelX + 42, upgradeTextY, 14,
+                 Color{150, 160, 175, 180});
+        upgradeTextY += 20;
+    }
+
+    DrawLine(panelX + 24, panelY + 185, panelX + panelWidth - 24, panelY + 185,
+             Color{50, 60, 75, 180});
+
+    // Opções de controle
+    DrawText("[P]   Continuar a Partida", panelX + 32, panelY + 202, 15, Color{210, 215, 225, 230});
+    DrawText("[F11] Alternar Tela Cheia", panelX + 32, panelY + 226, 15, Color{210, 215, 225, 230});
+    DrawText("[M]   Alternar Som", panelX + 32, panelY + 250, 15, Color{195, 205, 220, 220});
+    DrawText("[Q]   Retornar ao Menu Principal", panelX + 32, panelY + 274, 15,
              Color{180, 185, 195, 200});
 }
 

@@ -2,6 +2,7 @@
 #define LASTWICK_ENTITIES_PLAYER_H
 
 #include "core/GameConfig.h"
+#include "core/UpgradeModifiers.h"
 #include "entities/Entity.h"
 #include "entities/Lantern.h"
 
@@ -128,6 +129,12 @@ public:
      * @return Vetor bidimensional normalizado.
      */
     Vector2 getFacingDirection() const;
+
+    /**
+     * @brief Aplica os modificadores de melhorias acumuladas ao jogador e à lanterna acoplada.
+     * @param mods Estrutura de modificadores acumulados de melhorias.
+     */
+    void applyUpgradeModifiers(const UpgradeModifiers& mods);
 
 private:
     Lantern m_lantern;

@@ -34,6 +34,13 @@ add_executable(LastWick
     src/core/EventBus.cpp
     src/core/ParticleSystem.h
     src/core/ParticleSystem.cpp
+    src/core/UpgradeModifiers.h
+    src/core/Upgrade.h
+    src/core/Upgrade.cpp
+    src/core/UpgradePool.h
+    src/core/UpgradePool.cpp
+    src/core/TextUtil.h
+    src/core/TextUtil.cpp
     src/core/Scene.h
     src/core/SceneManager.h
     src/core/SceneManager.cpp
@@ -52,6 +59,10 @@ add_executable(LastWick
     src/entities/Wisp.cpp
     src/entities/Giant.h
     src/entities/Giant.cpp
+    src/entities/Splitter.h
+    src/entities/Splitter.cpp
+    src/entities/Fragment.h
+    src/entities/Fragment.cpp
     src/entities/EnemySpawner.h
     src/entities/EnemySpawner.cpp
     src/entities/Pickup.h
@@ -66,10 +77,14 @@ add_executable(LastWick
     src/entities/PickupSpawner.cpp
     src/scenes/HUD.h
     src/scenes/HUD.cpp
+    src/scenes/HintSystem.h
+    src/scenes/HintSystem.cpp
     src/scenes/MenuScene.h
     src/scenes/MenuScene.cpp
     src/scenes/NightIntroScene.h
     src/scenes/NightIntroScene.cpp
+    src/scenes/UpgradeScene.h
+    src/scenes/UpgradeScene.cpp
     src/scenes/GameScene.h
     src/scenes/GameScene.cpp
     src/scenes/GameOverScene.h
@@ -96,6 +111,13 @@ add_executable(LastWickTests
     src/core/HighScoreStore.cpp
     src/core/EventBus.h
     src/core/EventBus.cpp
+    src/core/UpgradeModifiers.h
+    src/core/Upgrade.h
+    src/core/Upgrade.cpp
+    src/core/UpgradePool.h
+    src/core/UpgradePool.cpp
+    src/core/TextUtil.h
+    src/core/TextUtil.cpp
     src/entities/Entity.h
     src/entities/Entity.cpp
     src/entities/Lantern.h
@@ -110,6 +132,10 @@ add_executable(LastWickTests
     src/entities/Wisp.cpp
     src/entities/Giant.h
     src/entities/Giant.cpp
+    src/entities/Splitter.h
+    src/entities/Splitter.cpp
+    src/entities/Fragment.h
+    src/entities/Fragment.cpp
     src/entities/EnemySpawner.h
     src/entities/EnemySpawner.cpp
     src/entities/Pickup.h

@@ -7,6 +7,7 @@
 #include "entities/Crawler.h"
 #include "entities/Giant.h"
 #include "entities/Player.h"
+#include "entities/Splitter.h"
 #include "entities/Wisp.h"
 
 namespace lastwick {
@@ -22,6 +23,8 @@ std::unique_ptr<Enemy> EnemySpawner::createEnemy(EnemyType type, Vector2 positio
             return std::make_unique<Wisp>(position);
         case EnemyType::Giant:
             return std::make_unique<Giant>(position);
+        case EnemyType::Splitter:
+            return std::make_unique<Splitter>(position);
     }
     return std::make_unique<Crawler>(position);
 }
@@ -46,6 +49,8 @@ void EnemySpawner::update(float deltaTime, Player& player, const Camera2D& camer
     Vector2 playerPos = player.getPosition();
     float playerRadius = player.getCollisionRadius();
 
+    std::vector<std::unique_ptr<Enemy>> newEnemies;
+
     for (auto& enemy : m_enemies) {
         if (!enemy || !enemy->isActive()) {
             continue;
@@ -69,8 +74,9 @@ void EnemySpawner::update(float deltaTime, Player& player, const Camera2D& camer
         // Verificação de eliminação por exposição à luz
         if (enemy->isDead()) {
             enemy->setActive(false);
-            eventBus.emit(Event{EventType::EnemyKilled, GameConfig::kPointsPerEnemyKill, 0.0f,
-                                enemy->getPosition()});
+            eventBus.emit(
+                Event{EventType::EnemyKilled, enemy->pointValue(), 0.0f, enemy->getPosition()});
+            enemy->onDeath(newEnemies);
         }
     }
 
@@ -79,10 +85,17 @@ void EnemySpawner::update(float deltaTime, Player& player, const Camera2D& camer
         std::remove_if(m_enemies.begin(), m_enemies.end(),
                        [](const std::unique_ptr<Enemy>& e) { return !e || !e->isActive(); }),
         m_enemies.end());
+
+    // 4. Inserção de criaturas geradas por divisão ao morrer
+    for (auto& spawned : newEnemies) {
+        m_enemies.push_back(std::move(spawned));
+    }
 }
 
 void EnemySpawner::applyFlare(Vector2 center, float radius, float extraExposure,
                               EventBus& eventBus) {
+    std::vector<std::unique_ptr<Enemy>> newEnemies;
+
     for (auto& enemy : m_enemies) {
         if (!enemy || !enemy->isActive()) {
             continue;
@@ -96,8 +109,9 @@ void EnemySpawner::applyFlare(Vector2 center, float radius, float extraExposure,
             enemy->addExposure(extraExposure);
             if (enemy->isDead()) {
                 enemy->setActive(false);
-                eventBus.emit(Event{EventType::EnemyKilled, GameConfig::kPointsPerEnemyKill, 0.0f,
-                                    enemy->getPosition()});
+                eventBus.emit(
+                    Event{EventType::EnemyKilled, enemy->pointValue(), 0.0f, enemy->getPosition()});
+                enemy->onDeath(newEnemies);
             }
         }
     }
@@ -106,6 +120,10 @@ void EnemySpawner::applyFlare(Vector2 center, float radius, float extraExposure,
         std::remove_if(m_enemies.begin(), m_enemies.end(),
                        [](const std::unique_ptr<Enemy>& e) { return !e || !e->isActive(); }),
         m_enemies.end());
+
+    for (auto& spawned : newEnemies) {
+        m_enemies.push_back(std::move(spawned));
+    }
 }
 
 void EnemySpawner::draw() const {
@@ -197,15 +215,20 @@ EnemyType EnemySpawner::chooseEnemyTypeForNight(int night) {
     } else if (night == 2) {
         if (r < GameConfig::kNight2CrawlerWeight) {
             return EnemyType::Crawler;
+        } else if (r < GameConfig::kNight2CrawlerWeight + GameConfig::kNight2WispWeight) {
+            return EnemyType::Wisp;
         }
-        return EnemyType::Wisp;
+        return EnemyType::Splitter;
     } else {
         if (r < GameConfig::kNight3CrawlerWeight) {
             return EnemyType::Crawler;
         } else if (r < GameConfig::kNight3CrawlerWeight + GameConfig::kNight3WispWeight) {
             return EnemyType::Wisp;
+        } else if (r < GameConfig::kNight3CrawlerWeight + GameConfig::kNight3WispWeight +
+                           GameConfig::kNight3GiantWeight) {
+            return EnemyType::Giant;
         }
-        return EnemyType::Giant;
+        return EnemyType::Splitter;
     }
 }
 

@@ -15,7 +15,8 @@ AudioManager::AudioManager()
       m_flareUsedSound{},
       m_pickupCollectedSound{},
       m_dawnReachedSound{},
-      m_gameOverSound{} {
+      m_gameOverSound{},
+      m_upgradeChosenSound{} {
     if (IsAudioDeviceReady()) {
         synthesizeAll();
         m_initialized = true;
@@ -33,6 +34,7 @@ void AudioManager::registerEvents(EventBus& eventBus) {
     eventBus.subscribe(EventType::PickupCollected, [this](const Event&) { playPickupCollected(); });
     eventBus.subscribe(EventType::DawnReached, [this](const Event&) { playDawnReached(); });
     eventBus.subscribe(EventType::GameOver, [this](const Event&) { playGameOver(); });
+    eventBus.subscribe(EventType::UpgradeChosen, [this](const Event&) { playUpgradeChosen(); });
 }
 
 void AudioManager::playEnemyKilled() {
@@ -68,6 +70,12 @@ void AudioManager::playDawnReached() {
 void AudioManager::playGameOver() {
     if (!s_muted && m_initialized && IsAudioDeviceReady()) {
         PlaySound(m_gameOverSound);
+    }
+}
+
+void AudioManager::playUpgradeChosen() {
+    if (!s_muted && m_initialized && IsAudioDeviceReady()) {
+        PlaySound(m_upgradeChosenSound);
     }
 }
 
@@ -171,6 +179,9 @@ void AudioManager::synthesizeAll() {
 
     // 6. Fim de Jogo: tom menor sombrio decadente
     m_gameOverSound = synthesizeSound(0.95f, 220.0f, 75.0f, 0.8f, 0);
+
+    // 7. Melhoria Escolhida: arpejo ascendente cristalino de poder
+    m_upgradeChosenSound = synthesizeSound(0.35f, 523.0f, 1318.0f, 0.75f, 3);
 }
 
 void AudioManager::unloadAll() {
@@ -181,6 +192,7 @@ void AudioManager::unloadAll() {
         UnloadSound(m_pickupCollectedSound);
         UnloadSound(m_dawnReachedSound);
         UnloadSound(m_gameOverSound);
+        UnloadSound(m_upgradeChosenSound);
         m_initialized = false;
     }
 }

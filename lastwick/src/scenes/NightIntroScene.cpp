@@ -19,6 +19,10 @@ void NightIntroScene::init() {
 void NightIntroScene::update(float deltaTime) {
     m_timer += deltaTime;
 
+    if (IsKeyPressed(KEY_F11)) {
+        ToggleBorderlessWindowed();
+    }
+
     if (m_timer >= GameConfig::kNightIntroDuration || IsKeyPressed(KEY_ENTER) ||
         IsKeyPressed(KEY_SPACE)) {
         m_sceneManager.changeScene(std::make_unique<GameScene>(m_sceneManager, m_runState));
@@ -45,11 +49,11 @@ void NightIntroScene::draw() {
              static_cast<int>(centerY - 80.0f), titleFontSize, Color{240, 220, 170, 255});
 
     // Subtítulo atmosférico conforme a noite
-    const char* subtitle = "O nevoeiro rasteja pelas ruinas ancestrais.";
+    const char* subtitle = "O nevoeiro rasteja pelas ruínas ancestrais.";
     if (m_runState.currentNight == 2) {
-        subtitle = "Sombras mais ageis e velozes emergem da escuridao.";
+        subtitle = "Sombras mais ágeis e velozes emergem da escuridão.";
     } else if (m_runState.currentNight >= 3) {
-        subtitle = "O apogeu da bruma perene. O teste supremo do guardiao.";
+        subtitle = "O apogeu da bruma perene. O teste supremo do guardião.";
     }
 
     int subFontSize = 22;

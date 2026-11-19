@@ -2,13 +2,24 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "core/GameConfig.h"
 #include "core/HighScoreStore.h"
 #include "core/RunState.h"
+#include "core/Upgrade.h"
+#include "core/UpgradeModifiers.h"
+#include "core/UpgradePool.h"
+#include "entities/Crawler.h"
 #include "entities/EnemySpawner.h"
+#include "entities/Fragment.h"
+#include "entities/Giant.h"
 #include "entities/Lantern.h"
 #include "entities/PickupSpawner.h"
+#include "entities/Splitter.h"
+#include "entities/Wisp.h"
 
 #define TEST_ASSERT(condition)                                                                  \
     do {                                                                                        \
@@ -77,17 +88,25 @@ static void testRunState() {
     TEST_ASSERT(state.enemiesDefeated == 0);
     TEST_ASSERT(!state.isVictory);
 
+    for (int i = 0; i < 5; ++i) {
+        TEST_ASSERT(state.upgradeCounts[i] == 0);
+    }
+    TEST_ASSERT(std::fabs(state.upgradeMods.lightRadiusMultiplier - 1.0f) < 0.001f);
+    TEST_ASSERT(std::fabs(state.upgradeMods.speedMultiplier - 1.0f) < 0.001f);
+
     state.score += 250;
     state.lives = 2;
     state.currentNight = 2;
     state.enemiesDefeated = 14;
     state.isVictory = true;
+    state.upgradeCounts[0] = 2;
 
     TEST_ASSERT(state.score == 250);
     TEST_ASSERT(state.lives == 2);
     TEST_ASSERT(state.currentNight == 2);
     TEST_ASSERT(state.enemiesDefeated == 14);
     TEST_ASSERT(state.isVictory);
+    TEST_ASSERT(state.upgradeCounts[0] == 2);
 
     std::cout << "  -> testRunState passou com sucesso!\n";
 }
@@ -160,6 +179,11 @@ static void testEnemySpawnerConfig() {
     TEST_ASSERT(giant->contactDamage() == GameConfig::kGiantContactDamage);
     TEST_ASSERT(!giant->isDead());
 
+    auto splitter = EnemySpawner::createEnemy(EnemyType::Splitter, testPos);
+    TEST_ASSERT(splitter != nullptr);
+    TEST_ASSERT(splitter->contactDamage() == GameConfig::kSplitterContactDamage);
+    TEST_ASSERT(!splitter->isDead());
+
     std::cout << "  -> testEnemySpawnerConfig passou com sucesso!\n";
 }
 
@@ -202,6 +226,149 @@ static void testPickupSpawnerBalancing() {
     std::cout << "  -> testPickupSpawnerBalancing passou com sucesso!\n";
 }
 
+static void testUpgradePool() {
+    std::cout << "[TEST] Executando testUpgradePool...\n";
+
+    // 1. Sorteio padrão: 3 melhorias distintas sorteadas
+    int counts[5] = {0, 0, 0, 0, 0};
+    auto options = UpgradePool::drawThree(counts);
+    TEST_ASSERT(options.size() == 3);
+
+    // Verifica que são três tipos distintos
+    TEST_ASSERT(options[0]->kind() != options[1]->kind());
+    TEST_ASSERT(options[0]->kind() != options[2]->kind());
+    TEST_ASSERT(options[1]->kind() != options[2]->kind());
+
+    // 2. Exclusão de tipos esgotados (3 escolhas)
+    counts[0] = GameConfig::kMaxUpgradePicksPerType;
+    counts[1] = GameConfig::kMaxUpgradePicksPerType;
+    // Sobram apenas os índices 2, 3, 4
+    for (int rep = 0; rep < 20; ++rep) {
+        auto drawn = UpgradePool::drawThree(counts);
+        TEST_ASSERT(drawn.size() == 3);
+        for (const auto& u : drawn) {
+            TEST_ASSERT(u->kind() != UpgradeKind::WiderLight);
+            TEST_ASSERT(u->kind() != UpgradeKind::FasterFlare);
+        }
+    }
+
+    // 3. Menos de 3 tipos disponíveis
+    counts[2] = GameConfig::kMaxUpgradePicksPerType;
+    counts[3] = GameConfig::kMaxUpgradePicksPerType;
+    // Sobra apenas o índice 4 (Swiftness)
+    auto drawnOne = UpgradePool::drawThree(counts);
+    TEST_ASSERT(drawnOne.size() == 1);
+    TEST_ASSERT(drawnOne[0]->kind() == UpgradeKind::Swiftness);
+
+    // 4. Todos os tipos esgotados
+    counts[4] = GameConfig::kMaxUpgradePicksPerType;
+    auto drawnNone = UpgradePool::drawThree(counts);
+    TEST_ASSERT(drawnNone.empty());
+
+    std::cout << "  -> testUpgradePool passou com sucesso!\n";
+}
+
+static void testUpgradeModifiers() {
+    std::cout << "[TEST] Executando testUpgradeModifiers...\n";
+
+    UpgradeModifiers mods{};
+    int lives = GameConfig::kPlayerInitialLives;
+
+    // 1. WiderLight: +15% no raio
+    WiderLightUpgrade wider;
+    wider.apply(mods, lives);
+    float expectedRadiusMult = 1.0f + GameConfig::kUpgradeWiderLightBonus;
+    TEST_ASSERT(std::fabs(mods.lightRadiusMultiplier - expectedRadiusMult) < 0.001f);
+    TEST_ASSERT(std::string(wider.name()) == "Luz Ampliada");
+
+    // 2. FasterFlare: -25% na recarga
+    FasterFlareUpgrade faster;
+    faster.apply(mods, lives);
+    float expectedFlareMult = 1.0f - GameConfig::kUpgradeFasterFlareReduction;
+    TEST_ASSERT(std::fabs(mods.flareCooldownMultiplier - expectedFlareMult) < 0.001f);
+    TEST_ASSERT(std::string(faster.name()) == "Clarão Veloz");
+
+    // 3. ExtraLife: +1 vida limitada a kPlayerMaxLives
+    ExtraLifeUpgrade extraLife;
+    extraLife.apply(mods, lives);
+    TEST_ASSERT(lives == GameConfig::kPlayerInitialLives + 1);
+    TEST_ASSERT(mods.extraLives == 1);
+    TEST_ASSERT(std::string(extraLife.name()) == "Vida Extra");
+
+    // 4. LongBurn: -20% no consumo
+    LongBurnUpgrade longBurn;
+    longBurn.apply(mods, lives);
+    float expectedBurnMult = 1.0f - GameConfig::kUpgradeLongBurnReduction;
+    TEST_ASSERT(std::fabs(mods.burnRateMultiplier - expectedBurnMult) < 0.001f);
+    TEST_ASSERT(std::string(longBurn.name()) == "Chama Duradoura");
+
+    // 5. Swiftness: +10% na velocidade
+    SwiftnessUpgrade swift;
+    swift.apply(mods, lives);
+    float expectedSpeedMult = 1.0f + GameConfig::kUpgradeSwiftnessBonus;
+    TEST_ASSERT(std::fabs(mods.speedMultiplier - expectedSpeedMult) < 0.001f);
+    TEST_ASSERT(std::string(swift.name()) == "Agilidade");
+
+    std::cout << "  -> testUpgradeModifiers passou com sucesso!\n";
+}
+
+static void testSplitterOnDeath() {
+    std::cout << "[TEST] Executando testSplitterOnDeath...\n";
+
+    Vector2 pos{200.0f, 300.0f};
+    Splitter splitter(pos);
+    TEST_ASSERT(splitter.contactDamage() == GameConfig::kSplitterContactDamage);
+    TEST_ASSERT(splitter.pointValue() == GameConfig::kPointsPerEnemyKill);
+
+    std::vector<std::unique_ptr<Enemy>> spawned;
+    splitter.onDeath(spawned);
+
+    TEST_ASSERT(spawned.size() == 2);
+    for (const auto& frag : spawned) {
+        TEST_ASSERT(frag != nullptr);
+        TEST_ASSERT(frag->pointValue() == GameConfig::kPointsPerFragmentKill);
+        TEST_ASSERT(frag->contactDamage() == GameConfig::kFragmentContactDamage);
+        TEST_ASSERT(std::fabs(frag->getRadius() - GameConfig::kFragmentRadius) < 0.001f);
+        TEST_ASSERT(std::fabs(frag->getSpeed() - GameConfig::kFragmentSpeed) < 0.001f);
+    }
+
+    std::cout << "  -> testSplitterOnDeath passou com sucesso!\n";
+}
+
+static void testFragmentOnDeath() {
+    std::cout << "[TEST] Executando testFragmentOnDeath...\n";
+
+    Vector2 pos{150.0f, 250.0f};
+    Fragment fragment(pos);
+    TEST_ASSERT(fragment.pointValue() == GameConfig::kPointsPerFragmentKill);
+    TEST_ASSERT(fragment.contactDamage() == GameConfig::kFragmentContactDamage);
+
+    std::vector<std::unique_ptr<Enemy>> spawned;
+    fragment.onDeath(spawned);
+    TEST_ASSERT(spawned.empty());
+
+    std::cout << "  -> testFragmentOnDeath passou com sucesso!\n";
+}
+
+static void testNightWeightsSumToOne() {
+    std::cout << "[TEST] Executando testNightWeightsSumToOne...\n";
+
+    // Noite 1: apenas Crawler (100%)
+    TEST_ASSERT(std::fabs(GameConfig::kNight1CrawlerWeight - 1.0f) < 0.001f);
+
+    // Noite 2: Crawler (50%) + Wisp (35%) + Splitter (15%) = 100%
+    float night2Sum = GameConfig::kNight2CrawlerWeight + GameConfig::kNight2WispWeight +
+                      GameConfig::kNight2SplitterWeight;
+    TEST_ASSERT(std::fabs(night2Sum - 1.0f) < 0.001f);
+
+    // Noite 3: Crawler (30%) + Wisp (30%) + Giant (15%) + Splitter (25%) = 100%
+    float night3Sum = GameConfig::kNight3CrawlerWeight + GameConfig::kNight3WispWeight +
+                      GameConfig::kNight3GiantWeight + GameConfig::kNight3SplitterWeight;
+    TEST_ASSERT(std::fabs(night3Sum - 1.0f) < 0.001f);
+
+    std::cout << "  -> testNightWeightsSumToOne passou com sucesso!\n";
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "   Iniciando Bateria de Testes Unitarios\n";
@@ -212,6 +379,11 @@ int main() {
     testHighScoreStore();
     testEnemySpawnerConfig();
     testPickupSpawnerBalancing();
+    testUpgradePool();
+    testUpgradeModifiers();
+    testSplitterOnDeath();
+    testFragmentOnDeath();
+    testNightWeightsSumToOne();
 
     std::cout << "========================================\n";
     std::cout << "   Todos os testes passaram com exito!\n";

@@ -11,6 +11,7 @@ Lantern::Lantern(float initialFuel, float burnRate, float minRadius, float maxRa
       m_burnRate(burnRate),
       m_minRadius(minRadius),
       m_maxRadius(maxRadius),
+      m_baseMaxRadius(maxRadius),
       m_flashCost(GameConfig::kFlareCost),
       m_flashCooldownDuration(GameConfig::kFlareCooldown),
       m_flashCooldownTimer(0.0f),
@@ -83,6 +84,13 @@ float Lantern::getFlashCooldownRatio() const {
 
 float Lantern::getFlashCost() const {
     return m_flashCost;
+}
+
+void Lantern::applyModifiers(float burnRateMultiplier, float cooldownMultiplier,
+                             float radiusMultiplier) {
+    m_burnRate = GameConfig::kLanternBurnRate * burnRateMultiplier;
+    m_flashCooldownDuration = GameConfig::kFlareCooldown * cooldownMultiplier;
+    m_maxRadius = m_baseMaxRadius * radiusMultiplier;
 }
 
 }  // namespace lastwick

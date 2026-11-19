@@ -23,6 +23,7 @@ struct GameConfig {
 
     // Parâmetros do jogador
     static constexpr int kPlayerInitialLives = 3;
+    static constexpr int kPlayerMaxLives = 5;
     static constexpr float kPlayerSpeed = 230.0f;
     static constexpr float kPlayerCollisionRadius = 16.0f;
     static constexpr float kPlayerInvulnerabilityDuration = 1.5f;
@@ -65,6 +66,19 @@ struct GameConfig {
     static constexpr int kGiantContactDamage = 2;
     static constexpr float kGiantRadius = 26.0f;
 
+    // Splitter (inimigo fragmentado)
+    static constexpr float kSplitterSpeed = 95.0f;
+    static constexpr float kSplitterMaxExposure = 1.5f;
+    static constexpr int kSplitterContactDamage = 1;
+    static constexpr float kSplitterRadius = 18.0f;
+
+    // Fragment (fragmento derivado do Splitter)
+    static constexpr float kFragmentSpeed = 150.0f;
+    static constexpr float kFragmentMaxExposure = 0.4f;
+    static constexpr int kFragmentContactDamage = 1;
+    static constexpr float kFragmentRadius = 9.0f;
+    static constexpr int kPointsPerFragmentKill = 5;
+
     // Pontuação e ciclos de noite
     static constexpr int kPointsPerEnemyKill = 10;
     static constexpr float kNightDurationSeconds = 90.0f;
@@ -75,15 +89,18 @@ struct GameConfig {
 
     // Intervalos e proporções de surgimento por noite
     static constexpr float kNight1SpawnInterval = 2.5f;
+    static constexpr float kNight1CrawlerWeight = 1.00f;
 
     static constexpr float kNight2SpawnInterval = 1.8f;
-    static constexpr float kNight2CrawlerWeight = 0.60f;
-    static constexpr float kNight2WispWeight = 0.40f;
+    static constexpr float kNight2CrawlerWeight = 0.50f;
+    static constexpr float kNight2WispWeight = 0.35f;
+    static constexpr float kNight2SplitterWeight = 0.15f;
 
     static constexpr float kNight3SpawnInterval = 1.3f;
-    static constexpr float kNight3CrawlerWeight = 0.40f;
-    static constexpr float kNight3WispWeight = 0.40f;
-    static constexpr float kNight3GiantWeight = 0.20f;
+    static constexpr float kNight3CrawlerWeight = 0.30f;
+    static constexpr float kNight3WispWeight = 0.30f;
+    static constexpr float kNight3GiantWeight = 0.15f;
+    static constexpr float kNight3SplitterWeight = 0.25f;
 
     // Parâmetros dos itens coletáveis (Pickups)
     static constexpr float kWeightOilFlask = 0.50f;
@@ -103,6 +120,17 @@ struct GameConfig {
     // Música ambiente procedural e parâmetros de áudio
     static constexpr float kMusicBaseVolume = 0.20f;
     static constexpr float kMusicPauseVolumeMultiplier = 0.35f;
+
+    // Melhorias entre noites (Upgrades)
+    static constexpr int kMaxUpgradePicksPerType = 3;
+    static constexpr float kUpgradeWiderLightBonus = 0.15f;
+    static constexpr float kUpgradeFasterFlareReduction = 0.25f;
+    static constexpr int kUpgradeExtraLifeAmount = 1;
+    static constexpr float kUpgradeLongBurnReduction = 0.20f;
+    static constexpr float kUpgradeSwiftnessBonus = 0.10f;
+
+    // Sistema de dicas na primeira noite
+    static constexpr float kHintSystemTotalDuration = 25.0f;
 
     // Efeitos visuais e transições
     static constexpr float kSceneFadeDuration = 0.30f;

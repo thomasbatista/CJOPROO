@@ -81,14 +81,9 @@ void SceneManager::draw() {
         m_currentScene->draw();
     }
 
-    // Camada visual de transição suave
-    if (m_fadeState != FadeState::None) {
-        float progress = m_fadeTimer / GameConfig::kSceneFadeDuration;
-        progress = std::clamp(progress, 0.0f, 1.0f);
-
-        float alpha = (m_fadeState == FadeState::FadeOut) ? progress : (1.0f - progress);
-        alpha = std::clamp(alpha, 0.0f, 1.0f);
-
+    // Camada visual de transição suave sobre a janela (caso a cena não aplique internamente)
+    if (m_fadeState != FadeState::None && (!m_currentScene || !m_currentScene->handlesOwnFade())) {
+        float alpha = getFadeAlpha();
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, alpha));
     }
 
@@ -103,6 +98,16 @@ void SceneManager::draw() {
         DrawRectangleLines(noticeX - 8, noticeY - 4, textWidth + 16, 26, Color{100, 48, 48, 220});
         DrawText(muteNotice, noticeX, noticeY, fontSize, Color{235, 95, 90, 240});
     }
+}
+
+float SceneManager::getFadeAlpha() const {
+    if (m_fadeState == FadeState::None) {
+        return 0.0f;
+    }
+    float progress = m_fadeTimer / GameConfig::kSceneFadeDuration;
+    progress = std::clamp(progress, 0.0f, 1.0f);
+    float alpha = (m_fadeState == FadeState::FadeOut) ? progress : (1.0f - progress);
+    return std::clamp(alpha, 0.0f, 1.0f);
 }
 
 bool SceneManager::shouldClose() const {

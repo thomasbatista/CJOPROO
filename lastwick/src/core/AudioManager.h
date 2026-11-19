@@ -69,6 +69,11 @@ public:
     void playGameOver();
 
     /**
+     * @brief Toca o som curto de confirmação ao escolher uma melhoria.
+     */
+    void playUpgradeChosen();
+
+    /**
      * @brief Verifica se os efeitos sonoros estão em modo mudo.
      * @return Verdadeiro se o áudio estiver silenciado.
      */
@@ -101,6 +106,7 @@ private:
     Sound m_pickupCollectedSound;
     Sound m_dawnReachedSound;
     Sound m_gameOverSound;
+    Sound m_upgradeChosenSound;
 };
 
 }  // namespace lastwick

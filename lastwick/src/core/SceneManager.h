@@ -74,10 +74,16 @@ public:
     EventBus& getEventBus();
 
     /**
-     * @brief Obtém a instância do reprodutor de música procedural.
+     * @brief Obtém a instânica do reprodutor de música procedural.
      * @return Referência ao MusicPlayer.
      */
     MusicPlayer& getMusicPlayer();
+
+    /**
+     * @brief Obtém a opacidade atual da transição de desvanecimento (0.0f a 1.0f).
+     * @return Valor de opacidade alpha do fade.
+     */
+    float getFadeAlpha() const;
 
     /**
      * @brief Verifica se o áudio (música e efeitos) está silenciado.

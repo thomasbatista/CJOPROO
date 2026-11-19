@@ -28,6 +28,10 @@ void GameOverScene::init() {
 void GameOverScene::update(float deltaTime) {
     m_timer += deltaTime;
 
+    if (IsKeyPressed(KEY_F11)) {
+        ToggleBorderlessWindowed();
+    }
+
     if (IsKeyPressed(KEY_R)) {
         RunState freshRun{};
         m_sceneManager.changeScene(std::make_unique<NightIntroScene>(m_sceneManager, freshRun));
@@ -51,7 +55,7 @@ void GameOverScene::draw() {
 
     // Título de Vitória ou Derrota
     const char* titleText =
-        m_runState.isVictory ? "VITORIA - A ALVORADA CHEGOU" : "A CHAMA SE APAGOU";
+        m_runState.isVictory ? "VITÓRIA - A ALVORADA CHEGOU" : "A CHAMA SE APAGOU";
     Color titleColor = m_runState.isVictory ? Color{245, 215, 110, 255} : Color{220, 60, 50, 255};
     int titleFontSize = 54;
     int titleWidth = MeasureText(titleText, titleFontSize);
@@ -74,17 +78,17 @@ void GameOverScene::draw() {
     DrawText(TextFormat("Inimigos Abatidos:   %d", m_runState.enemiesDefeated), cardX + 32,
              cardY + 62, 20, Color{215, 220, 230, 230});
 
-    DrawText(TextFormat("Pontuacao Final:     %d", m_runState.score), cardX + 32, cardY + 98, 22,
+    DrawText(TextFormat("Pontuação Final:     %d", m_runState.score), cardX + 32, cardY + 98, 22,
              Color{245, 215, 110, 255});
 
     // Exibição do Recorde Histórico
     const char* recordMsg = m_isNewRecord ? TextFormat("NOVO RECORDE: %d PONTOS!", m_highScore)
-                                          : TextFormat("Melhor Pontuacao: %d", m_highScore);
+                                          : TextFormat("Melhor Pontuação: %d", m_highScore);
     Color recordColor = m_isNewRecord ? Color{250, 190, 40, 255} : Color{170, 180, 195, 220};
     DrawText(recordMsg, cardX + 32, cardY + 140, 20, recordColor);
 
     if (m_runState.isVictory) {
-        DrawText(TextFormat("Bonus de Vidas Restantes: +%d", m_runState.lives * 50), cardX + 32,
+        DrawText(TextFormat("Bônus de Vidas Restantes: +%d", m_runState.lives * 50), cardX + 32,
                  cardY + 176, 17, Color{130, 215, 140, 230});
     }
 

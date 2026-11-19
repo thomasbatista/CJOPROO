@@ -201,4 +201,13 @@ Vector2 Player::getFacingDirection() const {
     return m_facingDirection;
 }
 
+void Player::applyUpgradeModifiers(const UpgradeModifiers& mods) {
+    m_speed = GameConfig::kPlayerSpeed * mods.speedMultiplier;
+    m_maxLives =
+        std::min(GameConfig::kPlayerMaxLives, GameConfig::kPlayerInitialLives + mods.extraLives);
+    m_lives = std::min(m_lives, m_maxLives);
+    m_lantern.applyModifiers(mods.burnRateMultiplier, mods.flareCooldownMultiplier,
+                             mods.lightRadiusMultiplier);
+}
+
 }  // namespace lastwick

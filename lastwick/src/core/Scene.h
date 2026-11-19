@@ -31,6 +31,12 @@ public:
      * @brief Renderiza os elementos gráficos da cena na tela.
      */
     virtual void draw() = 0;
+
+    /**
+     * @brief Indica se a cena gerencia seu próprio efeito de desvanecimento interno.
+     * @return Verdadeiro se a cena já aplica o fade em seu alvo de renderização.
+     */
+    virtual bool handlesOwnFade() const { return false; }
 };
 
 }  // namespace lastwick
