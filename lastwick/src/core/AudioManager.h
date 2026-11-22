@@ -74,6 +74,11 @@ public:
     void playUpgradeChosen();
 
     /**
+     * @brief Toca o aviso sonoro curto de aproximação de onda em pinça.
+     */
+    void playWaveWarning();
+
+    /**
      * @brief Verifica se os efeitos sonoros estão em modo mudo.
      * @return Verdadeiro se o áudio estiver silenciado.
      */
@@ -107,6 +112,7 @@ private:
     Sound m_dawnReachedSound;
     Sound m_gameOverSound;
     Sound m_upgradeChosenSound;
+    Sound m_waveWarningSound;
 };
 
 }  // namespace lastwick

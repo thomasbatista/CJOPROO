@@ -49,8 +49,8 @@ As sombras que habitam a névoa eterna manifestam-se em formas com comportamento
 | Inimigo | Velocidade (Luz / Escuro) | Exposição para Morte | Dano de Contato | Comportamento e Dinâmica |
 | :--- | :--- | :--- | :--- | :--- |
 | **Crawler** | 110 px/s / 176 px/s | 1.0 s | 1 ponto | Persegue o jogador em trajetória retilínea direta, avançando em grupo. Concede 10 pontos. |
-| **Wisp** | 170 px/s / 272 px/s | 0.5 s | 1 ponto | Espectro veloz que se desloca em zigue-zague senoidal perpendicular ao avanço. Concede 10 pontos. |
-| **Giant** | 60 px/s / 96 px/s | 3.0 s | 2 pontos | Colosso lento e massivo de grande raio; absorve grande quantidade de luz. Concede 10 pontos. |
+| **Wisp** | 264 px/s / 422 px/s | 0.5 s | 1 ponto | Espectro veloz que se desloca em zigue-zague senoidal perpendicular ao avanço. Concede 10 pontos. |
+| **Giant** | 111 px/s / 178 px/s | 3.0 s | 2 pontos | Colosso massivo e resistente à luz; velocidade calibrada para alcançar o guardião que não recua. Concede 10 pontos. |
 | **Splitter** | 95 px/s / 152 px/s | 1.5 s | 1 ponto | Sombra losangular que, ao sucumbir à luz via método gancho `onDeath`, divide-se em dois fragmentos menores. Concede 10 pontos. |
 | **Fragment** | 150 px/s / 240 px/s | 0.4 s | 1 ponto | Fragmento ágil derivado da divisão do Splitter. Não gera novas entidades ao morrer e concede 5 pontos. |
 
@@ -95,6 +95,62 @@ Durante os primeiros 25 segundos da Noite 1, o sistema `HintSystem` exibe orient
 ## Apresentação e Tela Cheia com Proporção Fixa (*Letterbox*)
 
 Para garantir qualidade visual consistente em monitores de qualquer resolução ou proporção de aspecto (16:9, 16:10, 21:9), toda a cena é renderizada internamente em uma textura lógica de alta precisão de 1280x720 pixels (`RenderTextureWrapper`). Ao alternar para o modo tela cheia via `F11` (`ToggleBorderlessWindowed`), a imagem é escalada mantendo estritamente a proporção original de 16:9, preenchendo as áreas laterais ou verticais excedentes com faixas pretas (*letterbox* / *pillarbox*).
+
+---
+
+## Linha do Tempo e Progressão das Noites (*Data-Driven Timeline*)
+
+A progressão e dificuldade do jogo são orientadas a dados através da classe `NightConfig`, que define fases cronológicas (`NightPhase`) com intervalos de geração e distribuições percentuais de inimigos somando rigorosamente 100%:
+
+| Noite | Fase Temporal | Intervalo de Spawn | Distribuição de Inimigos | Dinâmica da Fase |
+| :---: | :---: | :---: | :--- | :--- |
+| **Noite 1** | `0 - 30 s` | 2.5 s | Crawler 100% | Ambientação inicial e familiarização com a queima de sombras. |
+| | `30 - 60 s` | 2.0 s | Crawler 70%, Wisp 30% | Introdução de espectros velozes em zigue-zague. |
+| | `60 - 90 s` | 1.8 s | Crawler 50%, Wisp 30%, Giant 20% | Surgimento do primeiro Giant aos 60 s, forçando o uso tático do clarão. |
+| **Noite 2** | `0 - 30 s` | 1.8 s | Crawler 50%, Wisp 35%, Splitter 15% | Introdução do Splitter e início das emboscadas em pinça. |
+| | `30 - 60 s` | 1.5 s | Crawler 30%, Wisp 45%, Splitter 25% | Aumento da densidade de espectros e sombras que se dividem. |
+| | `60 - 90 s` | 1.3 s | Crawler 25%, Wisp 40%, Splitter 20%, Giant 15% | Hordas mistas completas com gigantes de alta resistência. |
+| **Noite 3** | `0 - 65 s` | 1.3 s | Crawler 30%, Wisp 30%, Giant 15%, Splitter 25% | Pressão contínua em ritmo intenso com ondas frequentes. |
+| | `65 - 90 s` | 0.7 s | Crawler 30%, Wisp 30%, Giant 15%, Splitter 25% | **Frenesi Final:** geração acelerada a cada 0.7 s até a alvorada. |
+
+---
+
+## Ondas em Pinça (*Pincer Wave*)
+
+A partir da Noite 2, o guardião é surpreendido por emboscadas coordenadas que convergem simultaneamente de direções opostas:
+- **Frequência:** a cada 20 segundos na Noite 2 e a cada 12 segundos na Noite 3 (iniciando aos 10 segundos decorridos da noite; a Noite 1 não possui ondas).
+- **Grupos:** 2 grupos gerados simultaneamente (3 inimigos por grupo na Noite 2 e 4 na Noite 3) em ângulos $\theta$ e $\theta + 180^\circ \pm 15^\circ$, fora da visão da câmera e dentro dos limites do mapa.
+- **Composição:** constituídos exclusivamente por `Crawler` e `Wisp`, ponderados pelas probabilidades da fase ativa.
+- **Aviso Antecipado (`WaveWarning`):** 1.0 segundo antes da chegada da onda, marcadores vermelhos pulsantes com ícones de advertência são exibidos nas bordas da tela indicando as direções exatas do ataque, acompanhados por um sinal sonoro de alerta sintetizado pelo `AudioManager`.
+- **Teto Dinâmico:** durante as ondas em pinça, o limite global de inimigos ativos pode ser excedido temporariamente em até 6 entidades.
+
+---
+
+## Frenesi da Noite 3 (*Frenzy Mode*)
+
+Nos últimos 25 segundos da Noite 3 (a partir de 65 segundos decorridos):
+- O evento `FrenzyStarted` é propagado pelo `EventBus`;
+- O temporizador restante no HUD passa a piscar ritmicamente em vermelho;
+- A trilha procedural no `MusicPlayer` acelera seu andamento em 25% e adiciona uma camada harmônica aguda em oitava superior até o término da jornada;
+- O intervalo de geração de inimigos atinge sua frequência máxima de 0.7 segundos.
+
+---
+
+## Névoa e Neblina Densa na Noite 2
+
+A segunda noite introduz desafios climáticos que reduzem a eficácia da visão:
+- O raio de iluminação da lanterna sofre uma redução permanente de 10% durante toda a Noite 2;
+- Uma camada de 25 círculos amplos e translúcidos de névoa desloca-se suavemente pelo cenário, desenhada antes da máscara de escuridão;
+- Um aviso estilizado de *"Neblina densa"* é apresentado na tela durante os primeiros 3 segundos da noite.
+
+---
+
+## Penalidade de Iluminação por Imobilidade (*Stillness Penalty*)
+
+Para incentivar a movimentação constante e desestimular o sedentarismo tático:
+- Se o guardião permanecer imóvel por mais de 1.5 segundos, o raio luminoso diminui suavemente até uma redução máxima de 30% (fator de 0.70) ao longo de 2.0 segundos, acompanhado por uma leve oscilação na borda da luz;
+- Ao retomar o movimento, a iluminação recupera sua amplitude integral em apenas 0.5 segundos;
+- O clarão da lanterna (*Flare*) opera em sua magnitude plena sem qualquer interferência da penalidade.
 
 ---
 
@@ -146,6 +202,8 @@ lastwick/
 │   │   ├── HighScoreStore.cpp
 │   │   ├── MusicPlayer.h       # Música ambiente contínua via AudioStream
 │   │   ├── MusicPlayer.cpp
+│   │   ├── NightConfig.h       # Linha do tempo cronológica orientada a dados por noite
+│   │   ├── NightConfig.cpp
 │   │   ├── ParticleSystem.h    # Sistema de emissão de partículas por primitivas
 │   │   ├── ParticleSystem.cpp
 │   │   ├── RaylibResource.h    # Invólucro RAII para alvos RenderTexture2D

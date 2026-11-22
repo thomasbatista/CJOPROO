@@ -1,8 +1,10 @@
 #include "scenes/HUD.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "core/GameConfig.h"
+#include "raylib.h"
 
 namespace lastwick {
 
@@ -15,7 +17,8 @@ void HUD::registerEvents(EventBus& eventBus) {
     });
 }
 
-void HUD::draw(const Player& player, float nightTimer, int currentNight, int totalNights) const {
+void HUD::draw(const Player& player, float nightTimer, int currentNight, int totalNights,
+               bool frenzyActive) const {
     int screenWidth = GameConfig::kScreenWidth;
     int screenHeight = GameConfig::kScreenHeight;
 
@@ -59,7 +62,15 @@ void HUD::draw(const Player& player, float nightTimer, int currentNight, int tot
     DrawText(nightText, timerPanelX + 16, 26, 14, Color{235, 215, 160, 240});
 
     const char* timeText = TextFormat("Tempo: %.0f s", nightTimer);
-    DrawText(timeText, timerPanelX + 16, 48, 18, Color{210, 215, 225, 255});
+    // Durante o frenesi, o temporizador pisca em vermelho intenso
+    Color timerColor = Color{210, 215, 225, 255};
+    if (frenzyActive) {
+        float blink = std::sin(static_cast<float>(GetTime()) * 8.0f) * 0.5f + 0.5f;
+        unsigned char rr = static_cast<unsigned char>(210 + 45.0f * blink);
+        unsigned char gg = static_cast<unsigned char>(40.0f * (1.0f - blink));
+        timerColor = Color{rr, gg, 30, 255};
+    }
+    DrawText(timeText, timerPanelX + 16, 48, 18, timerColor);
 
     // 3. Painel Inferior Esquerdo: Indicador do Clarão (Lantern Flare)
     int flashPanelY = screenHeight - 64;

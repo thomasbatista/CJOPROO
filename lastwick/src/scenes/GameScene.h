@@ -82,6 +82,8 @@ private:
     void drawMap() const;
     void drawDeadTree(const DeadTree& tree) const;
     void drawPauseOverlay() const;
+    void drawFogLayer() const;
+    void drawWaveWarningOverlay() const;
 
     SceneManager& m_sceneManager;
     RunState m_runState;
@@ -102,6 +104,13 @@ private:
 
     float m_nightTimer;
     bool m_isPaused;
+
+    bool m_frenzyActive;
+    bool m_night2FogBannerShown;
+    float m_night2FogBannerTimer;
+
+    std::vector<Vector2> m_fogCircles;
+    std::vector<Vector2> m_fogVelocities;
 
     float m_flareRingRadius;
     float m_flareMaxRadius;

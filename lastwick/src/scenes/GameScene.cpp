@@ -32,6 +32,11 @@ GameScene::GameScene(SceneManager& sceneManager, RunState runState)
       m_hintSystem(),
       m_nightTimer(GameConfig::kNightDurationSeconds),
       m_isPaused(false),
+      m_frenzyActive(false),
+      m_night2FogBannerShown(false),
+      m_night2FogBannerTimer(0.0f),
+      m_fogCircles{},
+      m_fogVelocities{},
       m_flareRingRadius(0.0f),
       m_flareMaxRadius(0.0f),
       m_flareActiveTimer(0.0f),
@@ -43,8 +48,13 @@ void GameScene::init() {
     m_nightTimer = GameConfig::kNightDurationSeconds;
     m_isPaused = false;
 
-    // Aplicação dos modificadores de melhorias acumulados entre noites
-    m_player.applyUpgradeModifiers(m_runState.upgradeMods);
+    // Aplicação dos modificadores de melhorias acumulados entre noites (na Noite 2, raio de luz é
+    // 10% menor)
+    UpgradeModifiers effectiveMods = m_runState.upgradeMods;
+    if (m_runState.currentNight == 2) {
+        effectiveMods.lightRadiusMultiplier *= GameConfig::kNight2LightRadiusMultiplier;
+    }
+    m_player.applyUpgradeModifiers(effectiveMods);
     m_player.setLives(m_runState.lives);
     m_player.getLantern().addFuel(100.0f);
 
@@ -54,6 +64,25 @@ void GameScene::init() {
     m_damageFlashTimer = 0.0f;
     m_shakeTimer = 0.0f;
     m_shakeIntensity = 0.0f;
+
+    m_frenzyActive = false;
+    m_night2FogBannerShown = false;
+    m_night2FogBannerTimer = 0.0f;
+    m_fogCircles.clear();
+    m_fogVelocities.clear();
+    if (m_runState.currentNight == 2) {
+        m_night2FogBannerTimer = GameConfig::kNight2FogBannerDuration;
+        for (int i = 0; i < GameConfig::kNight2FogCircleCount; ++i) {
+            float px =
+                static_cast<float>((i * 547 + 83) % static_cast<int>(GameConfig::kScreenWidth));
+            float py =
+                static_cast<float>((i * 311 + 157) % static_cast<int>(GameConfig::kScreenHeight));
+            float vx = static_cast<float>(((i % 5) - 2)) * 4.5f;
+            float vy = static_cast<float>(((i % 3) - 1)) * 3.5f;
+            m_fogCircles.push_back(Vector2{px, py});
+            m_fogVelocities.push_back(Vector2{vx, vy});
+        }
+    }
 
     m_camera.offset = Vector2{GameConfig::kScreenWidth * 0.5f, GameConfig::kScreenHeight * 0.5f};
     m_camera.target = m_player.getPosition();
@@ -177,11 +206,36 @@ void GameScene::update(float deltaTime) {
     m_particleSystem.update(deltaTime);
 
     // 3. Atualização das entidades delegadas aos seus respectivos gerenciadores
-    m_enemySpawner.update(deltaTime, m_player, m_camera, m_eventBus);
+    float elapsedNight = GameConfig::kNightDurationSeconds - m_nightTimer;
+    m_enemySpawner.update(deltaTime, m_player, m_camera, m_eventBus, elapsedNight);
     m_pickupSpawner.update(deltaTime, m_player, m_eventBus);
 
     // 4. Atualização das dicas contextuais na primeira noite
     m_hintSystem.update(deltaTime, m_runState.currentNight, m_nightTimer);
+
+    // 4b. Banner de névoa densa da Noite 2
+    if (m_runState.currentNight == 2 && m_night2FogBannerTimer > 0.0f) {
+        m_night2FogBannerTimer = std::max(0.0f, m_night2FogBannerTimer - deltaTime);
+    }
+
+    // 4c. Atualização dos círculos de névoa (Noite 2)
+    for (int i = 0; i < static_cast<int>(m_fogCircles.size()); ++i) {
+        m_fogCircles[i].x += m_fogVelocities[i].x * deltaTime;
+        m_fogCircles[i].y += m_fogVelocities[i].y * deltaTime;
+        if (m_fogCircles[i].x < -120.0f) m_fogCircles[i].x += GameConfig::kScreenWidth + 240.0f;
+        if (m_fogCircles[i].x > GameConfig::kScreenWidth + 120.0f)
+            m_fogCircles[i].x -= GameConfig::kScreenWidth + 240.0f;
+        if (m_fogCircles[i].y < -120.0f) m_fogCircles[i].y += GameConfig::kScreenHeight + 240.0f;
+        if (m_fogCircles[i].y > GameConfig::kScreenHeight + 120.0f)
+            m_fogCircles[i].y -= GameConfig::kScreenHeight + 240.0f;
+    }
+
+    // 4d. Frenesi da Noite 3: emite o evento na transição para os 65 s
+    if (m_runState.currentNight == 3 && !m_frenzyActive &&
+        elapsedNight >= GameConfig::kFrenzyStartTime) {
+        m_frenzyActive = true;
+        m_eventBus.emit(Event{EventType::FrenzyStarted, m_runState.currentNight, 0.0f});
+    }
 
     // 5. Contagem regressiva da noite em curso (90 s)
     m_nightTimer = std::max(0.0f, m_nightTimer - deltaTime);
@@ -290,7 +344,12 @@ void GameScene::renderLogicalScene() {
     BeginTextureMode(m_logicTarget.get());
     ClearBackground(Color{12, 14, 20, 255});
 
-    // 1. Desenho do mundo físico e entidades vivas sob a névoa
+    // 1a. Névoa densa da Noite 2 (círculos translúcidos antes da máscara de escuridão)
+    if (m_runState.currentNight == 2 && !m_fogCircles.empty()) {
+        drawFogLayer();
+    }
+
+    // 1b. Desenho do mundo físico e entidades vivas sob a névoa
     BeginMode2D(m_camera);
     drawMap();
     m_pickupSpawner.draw();
@@ -346,8 +405,24 @@ void GameScene::renderLogicalScene() {
     }
 
     // 6. Interface em tela (HUD) e sistema de dicas contextuais
-    m_hud.draw(m_player, m_nightTimer, m_runState.currentNight, GameConfig::kTotalNights);
+    m_hud.draw(m_player, m_nightTimer, m_runState.currentNight, GameConfig::kTotalNights,
+               m_frenzyActive);
     m_hintSystem.draw();
+
+    // 6b. Marcadores de aviso de onda em pinça
+    if (m_enemySpawner.isWaveWarningActive()) {
+        drawWaveWarningOverlay();
+    }
+
+    // 6c. Banner "Neblina densa" no início da Noite 2
+    if (m_night2FogBannerTimer > 0.0f) {
+        float alpha = std::min(1.0f, m_night2FogBannerTimer);
+        unsigned char a = static_cast<unsigned char>(200.0f * alpha);
+        const char* fogText = "Neblina densa";
+        int fw = MeasureText(fogText, 24);
+        DrawText(fogText, (GameConfig::kScreenWidth - fw) / 2, GameConfig::kScreenHeight / 2 + 60,
+                 24, Color{180, 210, 240, a});
+    }
 
     // 7. Painel de pausa
     if (m_isPaused) {
@@ -362,6 +437,19 @@ void GameScene::renderLogicalScene() {
     }
 
     EndTextureMode();
+}
+
+void GameScene::drawFogLayer() const {
+    // Círculos translúcidos que se movem lentamente sobre o cenário, desenhados no espaço de tela
+    for (int i = 0; i < static_cast<int>(m_fogCircles.size()); ++i) {
+        float r = 90.0f + static_cast<float>(i % 7) * 18.0f;
+        DrawCircleGradient(static_cast<int>(m_fogCircles[i].x), static_cast<int>(m_fogCircles[i].y),
+                           r, Color{140, 160, 190, 22}, Color{140, 160, 190, 0});
+    }
+}
+
+void GameScene::drawWaveWarningOverlay() const {
+    m_enemySpawner.drawWaveWarnings(m_player.getPosition(), m_camera);
 }
 
 void GameScene::presentLetterbox() const {

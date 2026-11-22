@@ -51,7 +51,8 @@ void Player::update(float deltaTime) {
     }
 
     float lengthSq = moveX * moveX + moveY * moveY;
-    if (lengthSq > 0.0f) {
+    bool isMoving = (lengthSq > 0.0001f);
+    if (isMoving) {
         float invLength = 1.0f / std::sqrt(lengthSq);
         moveX *= invLength;
         moveY *= invLength;
@@ -70,7 +71,7 @@ void Player::update(float deltaTime) {
         m_lantern.triggerFlash();
     }
 
-    m_lantern.update(deltaTime);
+    m_lantern.update(deltaTime, isMoving);
 }
 
 void Player::draw() const {

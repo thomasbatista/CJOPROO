@@ -24,7 +24,9 @@ enum class EventType {
     RunPaused,
     RunResumed,
     RunEnded,
-    UpgradeChosen
+    UpgradeChosen,
+    WaveWarning,
+    FrenzyStarted
 };
 
 /**

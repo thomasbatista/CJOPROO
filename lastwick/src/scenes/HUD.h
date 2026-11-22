@@ -37,8 +37,10 @@ public:
      * @param nightTimer Tempo restante da noite atual em segundos.
      * @param currentNight Índice da noite em andamento.
      * @param totalNights Total de noites configuradas.
+     * @param frenzyActive Verdadeiro quando o frenesi da Noite 3 está ativo.
      */
-    void draw(const Player& player, float nightTimer, int currentNight, int totalNights) const;
+    void draw(const Player& player, float nightTimer, int currentNight, int totalNights,
+              bool frenzyActive = false) const;
 
     /**
      * @brief Obtém a pontuação atual acumulada.

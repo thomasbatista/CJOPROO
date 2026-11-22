@@ -113,6 +113,10 @@ private:
     float m_noteDecayRate;
     size_t m_noteIndex;
 
+    // Efeito de frenesi da Noite 3
+    bool m_isFrenzy{false};
+    float m_frenzyNotePhase{0.0f};
+
     // Acordes de término de partida
     float m_endingTimer;
     float m_endingPhase1;
