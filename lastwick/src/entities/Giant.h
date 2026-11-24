@@ -43,6 +43,12 @@ public:
      */
     void drawEyes() const override;
 
+    /**
+     * @brief Retorna o tipo enumerado deste inimigo.
+     * @return EnemyType::Giant.
+     */
+    EnemyType getType() const override { return EnemyType::Giant; }
+
 private:
     float m_stepTimer;
 };

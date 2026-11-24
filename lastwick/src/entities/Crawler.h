@@ -41,6 +41,12 @@ public:
      * @brief Renderiza o par de olhos vermelhos penetrantes sobre a escuridão.
      */
     void drawEyes() const override;
+
+    /**
+     * @brief Retorna o tipo enumerado deste inimigo.
+     * @return EnemyType::Crawler.
+     */
+    EnemyType getType() const override { return EnemyType::Crawler; }
 };
 
 }  // namespace lastwick

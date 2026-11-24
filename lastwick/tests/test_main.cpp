@@ -8,6 +8,7 @@
 
 #include "core/GameConfig.h"
 #include "core/HighScoreStore.h"
+#include "core/LaunchOptions.h"
 #include "core/RunState.h"
 #include "core/Upgrade.h"
 #include "core/UpgradeModifiers.h"
@@ -148,21 +149,14 @@ static void testEnemySpawnerConfig() {
     EnemySpawner spawner(1);
     TEST_ASSERT(spawner.getCurrentNight() == 1);
 
-    // 1. Verificação dos intervalos de geração por noite
-    TEST_ASSERT(std::fabs(spawner.getSpawnIntervalForNight(1) - GameConfig::kNight1SpawnInterval) <
-                0.001f);
-    TEST_ASSERT(std::fabs(spawner.getSpawnIntervalForNight(2) - GameConfig::kNight2SpawnInterval) <
-                0.001f);
-    TEST_ASSERT(std::fabs(spawner.getSpawnIntervalForNight(3) - GameConfig::kNight3SpawnInterval) <
-                0.001f);
-
-    // 2. Na noite 1, somente Crawler deve ser gerado
+    // 1. Na fase inicial da noite 1 (0-30 s), somente Crawler deve ser gerado
+    const NightPhase& night1Phase0 = EnemySpawner::getPhaseForTime(1, 0.0f);
     for (int i = 0; i < 50; ++i) {
-        EnemyType type = spawner.chooseEnemyTypeForNight(1);
+        EnemyType type = spawner.chooseEnemyTypeForPhase(night1Phase0);
         TEST_ASSERT(type == EnemyType::Crawler);
     }
 
-    // 3. Criação e polimorfismo das criaturas derivadas
+    // 2. Criação e polimorfismo das criaturas derivadas e seus tipos
     Vector2 testPos{100.0f, 100.0f};
     auto crawler = EnemySpawner::createEnemy(EnemyType::Crawler, testPos);
     TEST_ASSERT(crawler != nullptr);
@@ -350,23 +344,156 @@ static void testFragmentOnDeath() {
     std::cout << "  -> testFragmentOnDeath passou com sucesso!\n";
 }
 
-static void testNightWeightsSumToOne() {
-    std::cout << "[TEST] Executando testNightWeightsSumToOne...\n";
+static void testNightTimelineWeightsAndBoundaries() {
+    std::cout << "[TEST] Executando testNightTimelineWeightsAndBoundaries...\n";
 
-    // Noite 1: apenas Crawler (100%)
-    TEST_ASSERT(std::fabs(GameConfig::kNight1CrawlerWeight - 1.0f) < 0.001f);
+    // 1. Os pesos de cada fase em todas as noites devem somar exatamente 100
+    for (int night = 1; night <= GameConfig::kTotalNights; ++night) {
+        const NightConfig& config = EnemySpawner::getNightConfig(night);
+        TEST_ASSERT(!config.phases.empty());
+        for (const auto& phase : config.phases) {
+            int sum = phase.crawlerWeight + phase.wispWeight + phase.giantWeight +
+                      phase.splitterWeight;
+            TEST_ASSERT(sum == 100);
+        }
+    }
 
-    // Noite 2: Crawler (50%) + Wisp (35%) + Splitter (15%) = 100%
-    float night2Sum = GameConfig::kNight2CrawlerWeight + GameConfig::kNight2WispWeight +
-                      GameConfig::kNight2SplitterWeight;
-    TEST_ASSERT(std::fabs(night2Sum - 1.0f) < 0.001f);
+    // 2. Busca da fase por tempo nos limites para a Noite 1 (0, 29.9, 30, 89.9)
+    const NightPhase& n1t0 = EnemySpawner::getPhaseForTime(1, 0.0f);
+    TEST_ASSERT(std::fabs(n1t0.spawnInterval - 2.5f) < 0.001f);
+    TEST_ASSERT(n1t0.crawlerWeight == 100);
 
-    // Noite 3: Crawler (30%) + Wisp (30%) + Giant (15%) + Splitter (25%) = 100%
-    float night3Sum = GameConfig::kNight3CrawlerWeight + GameConfig::kNight3WispWeight +
-                      GameConfig::kNight3GiantWeight + GameConfig::kNight3SplitterWeight;
-    TEST_ASSERT(std::fabs(night3Sum - 1.0f) < 0.001f);
+    const NightPhase& n1t29 = EnemySpawner::getPhaseForTime(1, 29.9f);
+    TEST_ASSERT(std::fabs(n1t29.spawnInterval - 2.5f) < 0.001f);
+    TEST_ASSERT(n1t29.crawlerWeight == 100);
 
-    std::cout << "  -> testNightWeightsSumToOne passou com sucesso!\n";
+    const NightPhase& n1t30 = EnemySpawner::getPhaseForTime(1, 30.0f);
+    TEST_ASSERT(std::fabs(n1t30.spawnInterval - 2.0f) < 0.001f);
+    TEST_ASSERT(n1t30.crawlerWeight == 70);
+    TEST_ASSERT(n1t30.wispWeight == 30);
+
+    const NightPhase& n1t89 = EnemySpawner::getPhaseForTime(1, 89.9f);
+    TEST_ASSERT(std::fabs(n1t89.spawnInterval - 1.8f) < 0.001f);
+    TEST_ASSERT(n1t89.crawlerWeight == 50);
+    TEST_ASSERT(n1t89.wispWeight == 30);
+    TEST_ASSERT(n1t89.giantWeight == 20);
+
+    // 3. Busca da fase por tempo nos limites para a Noite 2 (0, 29.9, 30, 89.9)
+    TEST_ASSERT(std::fabs(EnemySpawner::getPhaseForTime(2, 0.0f).spawnInterval - 1.8f) < 0.001f);
+    TEST_ASSERT(std::fabs(EnemySpawner::getPhaseForTime(2, 29.9f).spawnInterval - 1.8f) < 0.001f);
+    TEST_ASSERT(std::fabs(EnemySpawner::getPhaseForTime(2, 30.0f).spawnInterval - 1.5f) < 0.001f);
+    TEST_ASSERT(std::fabs(EnemySpawner::getPhaseForTime(2, 89.9f).spawnInterval - 1.3f) < 0.001f);
+
+    std::cout << "  -> testNightTimelineWeightsAndBoundaries passou com sucesso!\n";
+}
+
+static void testLanternStillnessPenalty() {
+    std::cout << "[TEST] Executando testLanternStillnessPenalty...\n";
+
+    Lantern lantern;
+    TEST_ASSERT(std::fabs(lantern.getStillRadiusFactor() - 1.0f) < 0.001f);
+
+    // 1. Ficar parado até o limite de 1.5 s ainda não reduz o raio
+    lantern.update(GameConfig::kStillnessDelaySeconds, false);
+    TEST_ASSERT(std::fabs(lantern.getStillRadiusFactor() - 1.0f) < 0.001f);
+
+    // 2. Após 2.0 s adicionais parado, o fator deve atingir 30% (0.30f)
+    lantern.update(1.0f, false);
+    TEST_ASSERT(std::fabs(lantern.getStillRadiusFactor() - 0.65f) < 0.01f);
+    lantern.update(1.0f, false);
+    TEST_ASSERT(std::fabs(lantern.getStillRadiusFactor() - GameConfig::kStillnessMinRadiusFactor) <
+                0.001f);
+
+    // Permanecer parado além do tempo mantém o mínimo de 30%
+    lantern.update(3.0f, false);
+    TEST_ASSERT(std::fabs(lantern.getStillRadiusFactor() - GameConfig::kStillnessMinRadiusFactor) <
+                0.001f);
+
+    // 3. O clarão não é afetado pelo fator de imobilidade
+    lantern.setFuel(100.0f);
+    float shrunkRadius = lantern.getRadius();
+    TEST_ASSERT(std::fabs(shrunkRadius -
+                          GameConfig::kLanternMaxRadius * GameConfig::kStillnessMinRadiusFactor) <
+                0.01f);
+    TEST_ASSERT(lantern.triggerFlash());
+    float expectedBaseAfterFlash =
+        (GameConfig::kLanternMinRadius +
+         (lantern.getFuel() / 100.0f) *
+             (GameConfig::kLanternMaxRadius - GameConfig::kLanternMinRadius)) *
+        GameConfig::kStillnessMinRadiusFactor;
+    float radiusWithFlash = lantern.getRadius();
+    TEST_ASSERT(std::fabs(radiusWithFlash - (expectedBaseAfterFlash + 180.0f)) < 0.01f);
+
+    // 4. Ao se mover, o fator recupera totalmente em 0.5 s
+    lantern.update(0.25f, true);
+    TEST_ASSERT(std::fabs(lantern.getStillRadiusFactor() - 0.65f) < 0.01f);
+    lantern.update(0.25f, true);
+    TEST_ASSERT(std::fabs(lantern.getStillRadiusFactor() - 1.0f) < 0.001f);
+
+    std::cout << "  -> testLanternStillnessPenalty passou com sucesso!\n";
+}
+
+static void testNight3FrenzySpawnInterval() {
+    std::cout << "[TEST] Executando testNight3FrenzySpawnInterval...\n";
+
+    // Antes de 65 s, o intervalo é 1.3 s
+    const NightPhase& beforeFrenzy = EnemySpawner::getPhaseForTime(3, 64.9f);
+    TEST_ASSERT(std::fabs(beforeFrenzy.spawnInterval - 1.3f) < 0.001f);
+
+    // A partir de 65 s (últimos 25 s), o intervalo cai para 0.7 s mantendo os pesos
+    const NightPhase& atFrenzyStart = EnemySpawner::getPhaseForTime(3, 65.0f);
+    TEST_ASSERT(std::fabs(atFrenzyStart.spawnInterval - 0.7f) < 0.001f);
+    TEST_ASSERT(atFrenzyStart.crawlerWeight == 30);
+    TEST_ASSERT(atFrenzyStart.wispWeight == 30);
+    TEST_ASSERT(atFrenzyStart.giantWeight == 15);
+    TEST_ASSERT(atFrenzyStart.splitterWeight == 25);
+
+    const NightPhase& nearEnd = EnemySpawner::getPhaseForTime(3, 89.9f);
+    TEST_ASSERT(std::fabs(nearEnd.spawnInterval - 0.7f) < 0.001f);
+
+    std::cout << "  -> testNight3FrenzySpawnInterval passou com sucesso!\n";
+}
+
+static void testOilBonusByEnemyType() {
+    std::cout << "[TEST] Executando testOilBonusByEnemyType...\n";
+
+    TEST_ASSERT(std::fabs(EnemySpawner::getOilBonusForType(EnemyType::Crawler) - 2.0f) < 0.001f);
+    TEST_ASSERT(std::fabs(EnemySpawner::getOilBonusForType(EnemyType::Wisp) - 2.0f) < 0.001f);
+    TEST_ASSERT(std::fabs(EnemySpawner::getOilBonusForType(EnemyType::Splitter) - 2.0f) < 0.001f);
+    TEST_ASSERT(std::fabs(EnemySpawner::getOilBonusForType(EnemyType::Fragment) - 2.0f) < 0.001f);
+    TEST_ASSERT(std::fabs(EnemySpawner::getOilBonusForType(EnemyType::Giant) - 3.0f) < 0.001f);
+
+    // Aplicação do bônus respeitando o limite máximo de 100
+    Lantern lantern;
+    lantern.setFuel(90.0f);
+    lantern.addFuel(EnemySpawner::getOilBonusForType(EnemyType::Crawler));
+    TEST_ASSERT(std::fabs(lantern.getFuel() - 92.0f) < 0.001f);
+
+    lantern.setFuel(99.0f);
+    lantern.addFuel(EnemySpawner::getOilBonusForType(EnemyType::Giant));
+    TEST_ASSERT(std::fabs(lantern.getFuel() - 100.0f) < 0.001f);
+
+    std::cout << "  -> testOilBonusByEnemyType passou com sucesso!\n";
+}
+
+static void testLaunchOptionsDemoFlag() {
+    std::cout << "[TEST] Executando testLaunchOptionsDemoFlag...\n";
+
+    const char* noArgs[] = {"LastWick"};
+    TEST_ASSERT(!parseLaunchOptions(1, noArgs).demoMode);
+
+    const char* otherArgs[] = {"LastWick", "--fullscreen"};
+    TEST_ASSERT(!parseLaunchOptions(2, otherArgs).demoMode);
+
+    const char* demoArgs[] = {"LastWick", "--demo"};
+    TEST_ASSERT(parseLaunchOptions(2, demoArgs).demoMode);
+
+    const char* mixedArgs[] = {"LastWick", "--other", "--demo"};
+    TEST_ASSERT(parseLaunchOptions(3, mixedArgs).demoMode);
+
+    TEST_ASSERT(!parseLaunchOptions(0, nullptr).demoMode);
+
+    std::cout << "  -> testLaunchOptionsDemoFlag passou com sucesso!\n";
 }
 
 int main() {
@@ -383,7 +510,11 @@ int main() {
     testUpgradeModifiers();
     testSplitterOnDeath();
     testFragmentOnDeath();
-    testNightWeightsSumToOne();
+    testNightTimelineWeightsAndBoundaries();
+    testLanternStillnessPenalty();
+    testNight3FrenzySpawnInterval();
+    testOilBonusByEnemyType();
+    testLaunchOptionsDemoFlag();
 
     std::cout << "========================================\n";
     std::cout << "   Todos os testes passaram com exito!\n";

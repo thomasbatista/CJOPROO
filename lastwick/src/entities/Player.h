@@ -136,6 +136,18 @@ public:
      */
     void applyUpgradeModifiers(const UpgradeModifiers& mods);
 
+    /**
+     * @brief Ativa ou desativa a invulnerabilidade do modo de demonstração.
+     * @param enabled Verdadeiro para tornar o jogador imune a dano.
+     */
+    void setDemoInvulnerable(bool enabled);
+
+    /**
+     * @brief Verifica se a invulnerabilidade do modo de demonstração está ativa.
+     * @return Verdadeiro se ativo.
+     */
+    bool isDemoInvulnerable() const;
+
 private:
     Lantern m_lantern;
     int m_lives;
@@ -145,6 +157,7 @@ private:
     float m_invulnerabilityTimer;
     float m_shieldTimer;
     float m_speedBoostTimer;
+    bool m_demoInvulnerable;
     Vector2 m_facingDirection;
     Vector2 m_minBound;
     Vector2 m_maxBound;

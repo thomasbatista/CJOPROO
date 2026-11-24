@@ -18,6 +18,7 @@ Player::Player(Vector2 position, int lives, float speed)
       m_invulnerabilityTimer(0.0f),
       m_shieldTimer(0.0f),
       m_speedBoostTimer(0.0f),
+      m_demoInvulnerable(false),
       m_facingDirection{0.0f, 1.0f},
       m_minBound{GameConfig::kMapBoundaryMargin, GameConfig::kMapBoundaryMargin},
       m_maxBound{GameConfig::kMapWidth - GameConfig::kMapBoundaryMargin,
@@ -70,7 +71,7 @@ void Player::update(float deltaTime) {
         m_lantern.triggerFlash();
     }
 
-    m_lantern.update(deltaTime);
+    m_lantern.update(deltaTime, lengthSq > 0.0f);
 }
 
 void Player::draw() const {
@@ -147,7 +148,7 @@ void Player::takeDamage(int amount) {
 }
 
 bool Player::hit(int damage) {
-    if (hasShield()) {
+    if (m_demoInvulnerable || hasShield()) {
         return false;
     }
     if (isInvulnerable() || m_lives <= 0) {
@@ -208,6 +209,14 @@ void Player::applyUpgradeModifiers(const UpgradeModifiers& mods) {
     m_lives = std::min(m_lives, m_maxLives);
     m_lantern.applyModifiers(mods.burnRateMultiplier, mods.flareCooldownMultiplier,
                              mods.lightRadiusMultiplier);
+}
+
+void Player::setDemoInvulnerable(bool enabled) {
+    m_demoInvulnerable = enabled;
+}
+
+bool Player::isDemoInvulnerable() const {
+    return m_demoInvulnerable;
 }
 
 }  // namespace lastwick

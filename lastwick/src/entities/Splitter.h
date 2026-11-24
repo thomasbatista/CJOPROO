@@ -52,6 +52,12 @@ public:
      */
     void onDeath(std::vector<std::unique_ptr<Enemy>>& spawned) override;
 
+    /**
+     * @brief Retorna o tipo enumerado deste inimigo.
+     * @return EnemyType::Splitter.
+     */
+    EnemyType getType() const override { return EnemyType::Splitter; }
+
 private:
     float m_time{0.0f};  ///< Acumulador de tempo para animação de pulsação.
 };

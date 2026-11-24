@@ -31,6 +31,12 @@ MusicPlayer::MusicPlayer()
       m_noteInterval(2.4f),
       m_noteDecayRate(0.85f),
       m_noteIndex(0),
+      m_isFrenzy(false),
+      m_frenzyNotePhase(0.0f),
+      m_frenzyNoteFreq(293.66f),
+      m_frenzyNoteEnvelope(0.0f),
+      m_frenzyNoteTimer(0.0f),
+      m_frenzyNoteIndex(0),
       m_endingTimer(0.0f),
       m_endingPhase1(0.0f),
       m_endingPhase2(0.0f),
@@ -69,11 +75,15 @@ void MusicPlayer::registerEvents(EventBus& eventBus) {
 
     eventBus.subscribe(EventType::RunEnded,
                        [this](const Event& event) { endRun(event.intValue == 1); });
+
+    eventBus.subscribe(EventType::FrenzyStarted, [this](const Event&) { startFrenzy(); });
 }
 
 void MusicPlayer::playMenuTheme() {
     m_state = MusicState::Menu;
     m_isPaused = false;
+    m_isFrenzy = false;
+    m_frenzyNoteEnvelope = 0.0f;
     m_noteInterval = 2.4f;
     m_noteDecayRate = 0.75f;
     m_noteTimer = 0.0f;
@@ -85,6 +95,9 @@ void MusicPlayer::startNight(int night) {
     m_state = MusicState::Night;
     m_currentNight = std::clamp(night, 1, 3);
     m_isPaused = false;
+    m_isFrenzy = false;
+    m_frenzyNoteEnvelope = 0.0f;
+    m_frenzyNoteTimer = 0.0f;
     m_endingEnvelope = 0.0f;
 
     // Aumento progressivo de tensão e andamento conforme a noite
@@ -106,6 +119,8 @@ void MusicPlayer::setPaused(bool paused) {
 
 void MusicPlayer::endRun(bool isVictory) {
     m_state = isVictory ? MusicState::VictoryEnding : MusicState::DefeatEnding;
+    m_isFrenzy = false;
+    m_frenzyNoteEnvelope = 0.0f;
     m_endingTimer = 0.0f;
     m_endingEnvelope = 1.0f;
     m_endingPhase1 = 0.0f;
@@ -208,7 +223,31 @@ void MusicPlayer::fillBuffer(short* data, int sampleCount) {
             }
         }
 
-        // 3. Acorde curto de vitória ou de derrota
+        // 3. Camada extra de notas agudas durante o frenesi da noite 3
+        float frenzySample = 0.0f;
+        if (m_state == MusicState::Night && m_isFrenzy) {
+            m_frenzyNoteTimer += dt;
+            float frenzyInterval = m_noteInterval * 0.5f;
+            if (m_frenzyNoteTimer >= frenzyInterval) {
+                m_frenzyNoteTimer = 0.0f;
+                m_frenzyNoteFreq = currentScale[m_frenzyNoteIndex % scaleSize] * 2.0f;
+                m_frenzyNoteIndex++;
+                m_frenzyNoteEnvelope = 1.0f;
+            }
+            if (m_frenzyNoteEnvelope > 0.0f) {
+                m_frenzyNotePhase += kTwoPi * m_frenzyNoteFreq * dt;
+                if (m_frenzyNotePhase >= kTwoPi) {
+                    m_frenzyNotePhase -= kTwoPi;
+                }
+                frenzySample = std::sin(m_frenzyNotePhase) * m_frenzyNoteEnvelope * 0.22f;
+                m_frenzyNoteEnvelope -= dt * m_noteDecayRate * 1.4f;
+                if (m_frenzyNoteEnvelope < 0.0f) {
+                    m_frenzyNoteEnvelope = 0.0f;
+                }
+            }
+        }
+
+        // 4. Acorde curto de vitória ou de derrota
         float endingSample = 0.0f;
         if (m_endingEnvelope > 0.0f) {
             float f1 = (m_state == MusicState::VictoryEnding) ? 261.63f : 110.0f;
@@ -237,8 +276,8 @@ void MusicPlayer::fillBuffer(short* data, int sampleCount) {
             }
         }
 
-        // 4. Mixagem das camadas e saturação em 16 bits
-        float mixed = (droneSample + noteSample + endingSample) * 0.70f;
+        // 5. Mixagem das camadas e saturação em 16 bits
+        float mixed = (droneSample + noteSample + frenzySample + endingSample) * 0.70f;
         mixed = std::clamp(mixed, -1.0f, 1.0f);
         data[i] = static_cast<short>(mixed * 30000.0f);
     }
@@ -254,6 +293,21 @@ bool MusicPlayer::isMuted() const {
 
 void MusicPlayer::toggleMute() {
     m_isMuted = !m_isMuted;
+}
+
+void MusicPlayer::startFrenzy() {
+    if (m_isFrenzy) {
+        return;
+    }
+    m_isFrenzy = true;
+    m_noteInterval /= GameConfig::kFrenzyTempoMultiplier;
+    m_noteDecayRate *= GameConfig::kFrenzyTempoMultiplier;
+    m_frenzyNoteTimer = 0.0f;
+    m_frenzyNoteEnvelope = 0.0f;
+}
+
+bool MusicPlayer::isFrenzy() const {
+    return m_isFrenzy;
 }
 
 }  // namespace lastwick

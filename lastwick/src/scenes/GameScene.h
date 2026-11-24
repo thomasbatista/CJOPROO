@@ -102,6 +102,7 @@ private:
 
     float m_nightTimer;
     bool m_isPaused;
+    bool m_frenzyStarted;
 
     float m_flareRingRadius;
     float m_flareMaxRadius;

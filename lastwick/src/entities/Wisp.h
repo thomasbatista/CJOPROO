@@ -43,6 +43,12 @@ public:
      */
     void drawEyes() const override;
 
+    /**
+     * @brief Retorna o tipo enumerado deste inimigo.
+     * @return EnemyType::Wisp.
+     */
+    EnemyType getType() const override { return EnemyType::Wisp; }
+
 private:
     float m_zigzagTimer;
 };

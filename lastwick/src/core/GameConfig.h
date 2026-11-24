@@ -40,6 +40,12 @@ struct GameConfig {
     static constexpr float kFlareVisualDuration = 0.5f;
     static constexpr float kFlareExtraExposure = 1.5f;
 
+    // Penalidade por permanência imóvel
+    static constexpr float kStillnessDelaySeconds = 1.5f;
+    static constexpr float kStillnessShrinkDuration = 2.0f;
+    static constexpr float kStillnessRecoverDuration = 0.5f;
+    static constexpr float kStillnessMinRadiusFactor = 0.30f;
+
     // Parâmetros comuns dos inimigos
     static constexpr float kDarkSpeedMultiplier = 1.6f;
     static constexpr float kExposureDecayRate = 0.35f;
@@ -53,7 +59,7 @@ struct GameConfig {
     static constexpr float kCrawlerRadius = 14.0f;
 
     // Wisp (espectro rápido em zigue-zague)
-    static constexpr float kWispSpeed = 170.0f;
+    static constexpr float kWispSpeed = 264.0f;
     static constexpr float kWispMaxExposure = 0.5f;
     static constexpr int kWispContactDamage = 1;
     static constexpr float kWispRadius = 11.0f;
@@ -61,7 +67,7 @@ struct GameConfig {
     static constexpr float kWispSineFrequency = 5.5f;
 
     // Giant (gigante resistente e lento)
-    static constexpr float kGiantSpeed = 60.0f;
+    static constexpr float kGiantSpeed = 111.0f;
     static constexpr float kGiantMaxExposure = 3.0f;
     static constexpr int kGiantContactDamage = 2;
     static constexpr float kGiantRadius = 26.0f;
@@ -87,20 +93,11 @@ struct GameConfig {
     static constexpr float kNightIntroDuration = 3.0f;
     static constexpr int kTotalNights = 3;
 
-    // Intervalos e proporções de surgimento por noite
-    static constexpr float kNight1SpawnInterval = 2.5f;
-    static constexpr float kNight1CrawlerWeight = 1.00f;
-
-    static constexpr float kNight2SpawnInterval = 1.8f;
-    static constexpr float kNight2CrawlerWeight = 0.50f;
-    static constexpr float kNight2WispWeight = 0.35f;
-    static constexpr float kNight2SplitterWeight = 0.15f;
-
-    static constexpr float kNight3SpawnInterval = 1.3f;
-    static constexpr float kNight3CrawlerWeight = 0.30f;
-    static constexpr float kNight3WispWeight = 0.30f;
-    static constexpr float kNight3GiantWeight = 0.15f;
-    static constexpr float kNight3SplitterWeight = 0.25f;
+    // Frenesi da terceira noite e bônus de óleo por eliminação
+    static constexpr float kFrenzyStartElapsedSeconds = 65.0f;
+    static constexpr float kFrenzyTempoMultiplier = 1.25f;
+    static constexpr float kOilBonusStandard = 2.0f;
+    static constexpr float kOilBonusGiant = 3.0f;
 
     // Parâmetros dos itens coletáveis (Pickups)
     static constexpr float kWeightOilFlask = 0.50f;

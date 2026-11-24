@@ -49,12 +49,37 @@ As sombras que habitam a névoa eterna manifestam-se em formas com comportamento
 | Inimigo | Velocidade (Luz / Escuro) | Exposição para Morte | Dano de Contato | Comportamento e Dinâmica |
 | :--- | :--- | :--- | :--- | :--- |
 | **Crawler** | 110 px/s / 176 px/s | 1.0 s | 1 ponto | Persegue o jogador em trajetória retilínea direta, avançando em grupo. Concede 10 pontos. |
-| **Wisp** | 170 px/s / 272 px/s | 0.5 s | 1 ponto | Espectro veloz que se desloca em zigue-zague senoidal perpendicular ao avanço. Concede 10 pontos. |
-| **Giant** | 60 px/s / 96 px/s | 3.0 s | 2 pontos | Colosso lento e massivo de grande raio; absorve grande quantidade de luz. Concede 10 pontos. |
+| **Wisp** | 264 px/s / 422.4 px/s | 0.5 s | 1 ponto | Espectro veloz que se desloca em zigue-zague senoidal perpendicular ao avanço. Concede 10 pontos. |
+| **Giant** | 111 px/s / 177.6 px/s | 3.0 s | 2 pontos | Colosso lento e massivo de grande raio; absorve grande quantidade de luz. Concede 10 pontos. |
 | **Splitter** | 95 px/s / 152 px/s | 1.5 s | 1 ponto | Sombra losangular que, ao sucumbir à luz via método gancho `onDeath`, divide-se em dois fragmentos menores. Concede 10 pontos. |
 | **Fragment** | 150 px/s / 240 px/s | 0.4 s | 1 ponto | Fragmento ágil derivado da divisão do Splitter. Não gera novas entidades ao morrer e concede 5 pontos. |
 
 Todos os inimigos se camuflam integralmente sob a camada escura de névoa, tornando seus corpos visíveis apenas quando iluminados pela lanterna. Contudo, seus olhos vermelhos brilham mesmo através da escuridão, alertando o guardião da aproximação de perigo.
+
+---
+
+## Progressão das Noites por Fase
+
+O `EnemySpawner` consulta uma linha do tempo orientada a dados (`NightConfig`) de acordo com o tempo decorrido da noite em curso:
+
+| Noite | Fase (Tempo Decorrido) | Intervalo de Spawn | Crawler | Wisp | Giant | Splitter |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Noite 1** | 0 s – 30 s | 2.5 s | 100% | — | — | — |
+| **Noite 1** | 30 s – 60 s | 2.0 s | 70% | 30% | — | — |
+| **Noite 1** | 60 s – 90 s | 1.8 s | 50% | 30% | 20% | — |
+| **Noite 2** | 0 s – 30 s | 1.8 s | 50% | 35% | — | 15% |
+| **Noite 2** | 30 s – 60 s | 1.5 s | 30% | 45% | — | 25% |
+| **Noite 2** | 60 s – 90 s | 1.3 s | 25% | 40% | 15% | 20% |
+| **Noite 3** | 0 s – 65 s | 1.3 s | 30% | 30% | 15% | 25% |
+| **Noite 3** | 65 s – 90 s *(Frenesi)* | 0.7 s | 30% | 30% | 15% | 25% |
+
+---
+
+## Mecânicas de Sobrevivência e Frenesi
+
+- **Penalidade por Ficar Parado:** Se o guardião permanecer imóvel por mais de `1.5 s`, o raio base da lanterna diminui suavemente até `30%` ao longo de `2.0 s` (o clarão não é afetado). Ao voltar a se movimentar, o raio retorna ao normal em `0.5 s`.
+- **Frenesi da Terceira Noite:** Nos últimos `25 s` da Noite 3 (a partir de `65 s` decorridos), o intervalo de surgimento cai para `0.7 s` e o evento `FrenzyStarted` é emitido no `EventBus`. O `MusicPlayer` acelera o andamento em `25%` e adiciona uma camada extra de notas mais agudas até o fim da noite.
+- **Bônus de Óleo por Eliminação:** Cada criatura derrotada restaura combustível na lanterna (limitado ao máximo de `100`): `+2` unidades para `Crawler`, `Wisp`, `Splitter` e `Fragment`, e `+3` unidades para `Giant`.
 
 ---
 
@@ -144,6 +169,7 @@ lastwick/
 │   │   ├── GameConfig.h        # Constantes estáticas centralizadas de balanceamento
 │   │   ├── HighScoreStore.h    # Persistência do recorde histórico em disco
 │   │   ├── HighScoreStore.cpp
+│   │   ├── LaunchOptions.h     # Análise dos argumentos de linha de comando (--demo)
 │   │   ├── MusicPlayer.h       # Música ambiente contínua via AudioStream
 │   │   ├── MusicPlayer.cpp
 │   │   ├── ParticleSystem.h    # Sistema de emissão de partículas por primitivas
@@ -269,9 +295,29 @@ Para iniciar o jogo:
 
 ---
 
+### Modo de Demonstração (`--demo`)
+
+O argumento `--demo` habilita atalhos de apresentação sem alterar a jogabilidade padrão quando omitido:
+- Título da janela alterado para `Last Wick [DEMO]`;
+- `F5`, `F6` e `F7` iniciam diretamente as Noites 1, 2 e 3 com um `RunState` novo;
+- `F8` liga ou desliga a invulnerabilidade do guardião.
+
+**Pela linha de comando:**
+```bash
+./build/LastWick.exe --demo
+```
+
+**Pelo Qt Creator:**
+1. No painel lateral esquerdo, acesse **Projects** (`Ctrl + 5`);
+2. Em **Build & Run**, selecione **Run** no kit ativo;
+3. No campo **Command line arguments**, informe `--demo`;
+4. Execute normalmente com `Ctrl + R`.
+
+---
+
 ## Execução dos Testes Automatizados (CTest)
 
-Os testes unitários cobrem de forma independente de janela ou áudio as regras de negócio de `Lantern`, `RunState`, `HighScoreStore`, `EnemySpawner`, `PickupSpawner`, `UpgradePool`, `Upgrade` (multiplicadores de melhorias), método gancho `onDeath` (`Splitter` e `Fragment`) e validação da soma unitária das probabilidades de surgimento por noite:
+Os testes unitários cobrem de forma independente de janela ou áudio as regras de negócio de `Lantern` (incluindo penalidade por imobilidade), `RunState`, `HighScoreStore`, `EnemySpawner` (linha do tempo por fase, limites temporais, frenesi da noite 3 e bônus de óleo por tipo), `PickupSpawner`, `UpgradePool`, `Upgrade` (multiplicadores de melhorias), método gancho `onDeath` (`Splitter` e `Fragment`) e análise do argumento `--demo` (`LaunchOptions`):
 
 ```bash
 # Executar a bateria de testes via CTest exibindo a saída detalhada

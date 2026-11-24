@@ -90,6 +90,17 @@ public:
      */
     void toggleMute();
 
+    /**
+     * @brief Ativa o modo frenesi da terceira noite (andamento mais rápido e camada aguda).
+     */
+    void startFrenzy();
+
+    /**
+     * @brief Verifica se o modo frenesi está ativo.
+     * @return Verdadeiro se o frenesi estiver em andamento.
+     */
+    bool isFrenzy() const;
+
 private:
     void fillBuffer(short* data, int sampleCount);
 
@@ -112,6 +123,14 @@ private:
     float m_noteInterval;
     float m_noteDecayRate;
     size_t m_noteIndex;
+
+    // Camada extra de frenesi da terceira noite
+    bool m_isFrenzy;
+    float m_frenzyNotePhase;
+    float m_frenzyNoteFreq;
+    float m_frenzyNoteEnvelope;
+    float m_frenzyNoteTimer;
+    size_t m_frenzyNoteIndex;
 
     // Acordes de término de partida
     float m_endingTimer;

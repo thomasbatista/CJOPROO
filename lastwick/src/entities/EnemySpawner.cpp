@@ -5,6 +5,7 @@
 
 #include "core/GameConfig.h"
 #include "entities/Crawler.h"
+#include "entities/Fragment.h"
 #include "entities/Giant.h"
 #include "entities/Player.h"
 #include "entities/Splitter.h"
@@ -25,20 +26,22 @@ std::unique_ptr<Enemy> EnemySpawner::createEnemy(EnemyType type, Vector2 positio
             return std::make_unique<Giant>(position);
         case EnemyType::Splitter:
             return std::make_unique<Splitter>(position);
+        case EnemyType::Fragment:
+            return std::make_unique<Fragment>(position);
     }
     return std::make_unique<Crawler>(position);
 }
 
 void EnemySpawner::update(float deltaTime, Player& player, const Camera2D& camera,
-                          EventBus& eventBus) {
-    // 1. Processamento da geração temporal de novos inimigos
+                          EventBus& eventBus, float elapsedSeconds) {
+    // 1. Processamento da geração temporal de novos inimigos segundo a fase da noite
+    const NightPhase& phase = getPhaseForTime(m_currentNight, elapsedSeconds);
     m_spawnTimer += deltaTime;
-    float currentInterval = getSpawnIntervalForNight(m_currentNight);
 
-    if (m_spawnTimer >= currentInterval) {
+    if (m_spawnTimer >= phase.spawnInterval) {
         m_spawnTimer = 0.0f;
         if (m_enemies.size() < static_cast<size_t>(GameConfig::kMaxActiveEnemies)) {
-            EnemyType type = chooseEnemyTypeForNight(m_currentNight);
+            EnemyType type = chooseEnemyTypeForPhase(phase);
             Vector2 spawnPos = computeSpawnPosition(camera);
             m_enemies.push_back(createEnemy(type, spawnPos));
         }
@@ -74,8 +77,8 @@ void EnemySpawner::update(float deltaTime, Player& player, const Camera2D& camer
         // Verificação de eliminação por exposição à luz
         if (enemy->isDead()) {
             enemy->setActive(false);
-            eventBus.emit(
-                Event{EventType::EnemyKilled, enemy->pointValue(), 0.0f, enemy->getPosition()});
+            eventBus.emit(Event{EventType::EnemyKilled, enemy->pointValue(), 0.0f,
+                                enemy->getPosition(), enemy->getType()});
             enemy->onDeath(newEnemies);
         }
     }
@@ -109,8 +112,8 @@ void EnemySpawner::applyFlare(Vector2 center, float radius, float extraExposure,
             enemy->addExposure(extraExposure);
             if (enemy->isDead()) {
                 enemy->setActive(false);
-                eventBus.emit(
-                    Event{EventType::EnemyKilled, enemy->pointValue(), 0.0f, enemy->getPosition()});
+                eventBus.emit(Event{EventType::EnemyKilled, enemy->pointValue(), 0.0f,
+                                    enemy->getPosition(), enemy->getType()});
                 enemy->onDeath(newEnemies);
             }
         }
@@ -206,39 +209,60 @@ Vector2 EnemySpawner::computeSpawnPosition(const Camera2D& camera) {
     return Vector2{spawnX, spawnY};
 }
 
-EnemyType EnemySpawner::chooseEnemyTypeForNight(int night) {
-    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-    float r = dist(m_rng);
+const NightConfig& EnemySpawner::getNightConfig(int night) {
+    static const NightConfig kNight1{
+        {{0.0f, 2.5f, 100, 0, 0, 0},
+         {30.0f, 2.0f, 70, 30, 0, 0},
+         {60.0f, 1.8f, 50, 30, 20, 0}}};
+
+    static const NightConfig kNight2{
+        {{0.0f, 1.8f, 50, 35, 0, 15},
+         {30.0f, 1.5f, 30, 45, 0, 25},
+         {60.0f, 1.3f, 25, 40, 15, 20}}};
+
+    static const NightConfig kNight3{
+        {{0.0f, 1.3f, 30, 30, 15, 25},
+         {GameConfig::kFrenzyStartElapsedSeconds, 0.7f, 30, 30, 15, 25}}};
 
     if (night <= 1) {
-        return EnemyType::Crawler;
-    } else if (night == 2) {
-        if (r < GameConfig::kNight2CrawlerWeight) {
-            return EnemyType::Crawler;
-        } else if (r < GameConfig::kNight2CrawlerWeight + GameConfig::kNight2WispWeight) {
-            return EnemyType::Wisp;
-        }
-        return EnemyType::Splitter;
-    } else {
-        if (r < GameConfig::kNight3CrawlerWeight) {
-            return EnemyType::Crawler;
-        } else if (r < GameConfig::kNight3CrawlerWeight + GameConfig::kNight3WispWeight) {
-            return EnemyType::Wisp;
-        } else if (r < GameConfig::kNight3CrawlerWeight + GameConfig::kNight3WispWeight +
-                           GameConfig::kNight3GiantWeight) {
-            return EnemyType::Giant;
-        }
-        return EnemyType::Splitter;
+        return kNight1;
     }
+    if (night == 2) {
+        return kNight2;
+    }
+    return kNight3;
 }
 
-float EnemySpawner::getSpawnIntervalForNight(int night) const {
-    if (night <= 1) {
-        return GameConfig::kNight1SpawnInterval;
-    } else if (night == 2) {
-        return GameConfig::kNight2SpawnInterval;
+const NightPhase& EnemySpawner::getPhaseForTime(int night, float elapsedSeconds) {
+    const NightConfig& config = getNightConfig(night);
+    const NightPhase* selected = &config.phases.front();
+    for (const auto& phase : config.phases) {
+        if (elapsedSeconds >= phase.startSeconds) {
+            selected = &phase;
+        }
     }
-    return GameConfig::kNight3SpawnInterval;
+    return *selected;
+}
+
+float EnemySpawner::getOilBonusForType(EnemyType type) {
+    return (type == EnemyType::Giant) ? GameConfig::kOilBonusGiant
+                                      : GameConfig::kOilBonusStandard;
+}
+
+EnemyType EnemySpawner::chooseEnemyTypeForPhase(const NightPhase& phase) {
+    std::uniform_int_distribution<int> dist(0, 99);
+    int r = dist(m_rng);
+
+    if (r < phase.crawlerWeight) {
+        return EnemyType::Crawler;
+    }
+    if (r < phase.crawlerWeight + phase.wispWeight) {
+        return EnemyType::Wisp;
+    }
+    if (r < phase.crawlerWeight + phase.wispWeight + phase.giantWeight) {
+        return EnemyType::Giant;
+    }
+    return EnemyType::Splitter;
 }
 
 }  // namespace lastwick

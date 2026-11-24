@@ -10,6 +10,11 @@
 namespace lastwick {
 
 /**
+ * @brief Tipos de entidades hostis presentes no jogo.
+ */
+enum class EnemyType { Crawler, Wisp, Giant, Splitter, Fragment };
+
+/**
  * @brief Tipos de eventos suportados pelo barramento de mensagens.
  */
 enum class EventType {
@@ -21,6 +26,7 @@ enum class EventType {
     DawnReached,
     GameOver,
     NightStarted,
+    FrenzyStarted,
     RunPaused,
     RunResumed,
     RunEnded,
@@ -35,6 +41,7 @@ struct Event {
     int intValue{0};
     float floatValue{0.0f};
     Vector2 position{0.0f, 0.0f};
+    EnemyType enemyType{EnemyType::Crawler};
 };
 
 /**

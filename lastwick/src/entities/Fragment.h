@@ -58,6 +58,12 @@ public:
      */
     int pointValue() const override;
 
+    /**
+     * @brief Retorna o tipo enumerado deste inimigo.
+     * @return EnemyType::Fragment.
+     */
+    EnemyType getType() const override { return EnemyType::Fragment; }
+
 private:
     float m_time{0.0f};  ///< Acumulador de tempo para animação de pulsação.
 };

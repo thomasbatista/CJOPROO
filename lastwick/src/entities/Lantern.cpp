@@ -17,9 +17,11 @@ Lantern::Lantern(float initialFuel, float burnRate, float minRadius, float maxRa
       m_flashCooldownTimer(0.0f),
       m_flashActiveDuration(GameConfig::kFlareVisualDuration),
       m_flashActiveTimer(0.0f),
-      m_flashRadiusBonus(180.0f) {}
+      m_flashRadiusBonus(180.0f),
+      m_stillTimer(0.0f),
+      m_stillRadiusFactor(1.0f) {}
 
-void Lantern::update(float deltaTime) {
+void Lantern::update(float deltaTime, bool isMoving) {
     if (m_fuel > 0.0f) {
         m_fuel = std::max(0.0f, m_fuel - m_burnRate * deltaTime);
     }
@@ -30,6 +32,25 @@ void Lantern::update(float deltaTime) {
 
     if (m_flashActiveTimer > 0.0f) {
         m_flashActiveTimer = std::max(0.0f, m_flashActiveTimer - deltaTime);
+    }
+
+    if (!isMoving) {
+        float prevTimer = m_stillTimer;
+        m_stillTimer += deltaTime;
+        if (m_stillTimer > GameConfig::kStillnessDelaySeconds) {
+            float shrinkDt = (prevTimer < GameConfig::kStillnessDelaySeconds)
+                                 ? (m_stillTimer - GameConfig::kStillnessDelaySeconds)
+                                 : deltaTime;
+            float shrinkRate = (1.0f - GameConfig::kStillnessMinRadiusFactor) /
+                               GameConfig::kStillnessShrinkDuration;
+            m_stillRadiusFactor = std::max(GameConfig::kStillnessMinRadiusFactor,
+                                           m_stillRadiusFactor - shrinkRate * shrinkDt);
+        }
+    } else {
+        m_stillTimer = 0.0f;
+        float recoverRate =
+            (1.0f - GameConfig::kStillnessMinRadiusFactor) / GameConfig::kStillnessRecoverDuration;
+        m_stillRadiusFactor = std::min(1.0f, m_stillRadiusFactor + recoverRate * deltaTime);
     }
 }
 
@@ -46,6 +67,7 @@ bool Lantern::triggerFlash() {
 float Lantern::getRadius() const {
     float normalizedFuel = m_fuel / 100.0f;
     float baseRadius = m_minRadius + normalizedFuel * (m_maxRadius - m_minRadius);
+    baseRadius *= m_stillRadiusFactor;
 
     if (m_flashActiveTimer > 0.0f) {
         float factor = m_flashActiveTimer / m_flashActiveDuration;
@@ -53,6 +75,10 @@ float Lantern::getRadius() const {
     }
 
     return baseRadius;
+}
+
+float Lantern::getStillRadiusFactor() const {
+    return m_stillRadiusFactor;
 }
 
 float Lantern::getFuel() const {

@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "core/EventBus.h"
 #include "entities/Entity.h"
 
 namespace lastwick {
@@ -87,6 +88,12 @@ public:
      * @return Pontos obtidos pela eliminação.
      */
     virtual int pointValue() const;
+
+    /**
+     * @brief Obtém o tipo enumerado deste inimigo.
+     * @return Tipo correspondente em EnemyType.
+     */
+    virtual EnemyType getType() const = 0;
 
     /**
      * @brief Obtém o raio de colisão do inimigo.

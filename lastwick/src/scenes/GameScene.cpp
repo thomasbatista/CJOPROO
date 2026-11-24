@@ -32,6 +32,7 @@ GameScene::GameScene(SceneManager& sceneManager, RunState runState)
       m_hintSystem(),
       m_nightTimer(GameConfig::kNightDurationSeconds),
       m_isPaused(false),
+      m_frenzyStarted(false),
       m_flareRingRadius(0.0f),
       m_flareMaxRadius(0.0f),
       m_flareActiveTimer(0.0f),
@@ -42,6 +43,7 @@ GameScene::GameScene(SceneManager& sceneManager, RunState runState)
 void GameScene::init() {
     m_nightTimer = GameConfig::kNightDurationSeconds;
     m_isPaused = false;
+    m_frenzyStarted = false;
 
     // Aplicação dos modificadores de melhorias acumulados entre noites
     m_player.applyUpgradeModifiers(m_runState.upgradeMods);
@@ -84,6 +86,7 @@ void GameScene::init() {
         m_runState.enemiesDefeated++;
         int points = (event.intValue > 0) ? event.intValue : GameConfig::kPointsPerEnemyKill;
         m_runState.score += points;
+        m_player.getLantern().addFuel(EnemySpawner::getOilBonusForType(event.enemyType));
     });
 
     m_eventBus.subscribe(EventType::PlayerHit, [this](const Event&) {
@@ -124,6 +127,11 @@ void GameScene::update(float deltaTime) {
     // Alternância de modo tela cheia via tecla F11
     if (IsKeyPressed(KEY_F11)) {
         ToggleBorderlessWindowed();
+    }
+
+    // Alternância de invulnerabilidade no modo de demonstração via tecla F8
+    if (m_sceneManager.isDemoMode() && IsKeyPressed(KEY_F8)) {
+        m_player.setDemoInvulnerable(!m_player.isDemoInvulnerable());
     }
 
     // 1. Processamento e controle do menu de pausa exclusivamente com a tecla P
@@ -177,14 +185,21 @@ void GameScene::update(float deltaTime) {
     m_particleSystem.update(deltaTime);
 
     // 3. Atualização das entidades delegadas aos seus respectivos gerenciadores
-    m_enemySpawner.update(deltaTime, m_player, m_camera, m_eventBus);
+    float elapsedSeconds = GameConfig::kNightDurationSeconds - m_nightTimer;
+    m_enemySpawner.update(deltaTime, m_player, m_camera, m_eventBus, elapsedSeconds);
     m_pickupSpawner.update(deltaTime, m_player, m_eventBus);
 
     // 4. Atualização das dicas contextuais na primeira noite
     m_hintSystem.update(deltaTime, m_runState.currentNight, m_nightTimer);
 
-    // 5. Contagem regressiva da noite em curso (90 s)
+    // 5. Contagem regressiva da noite em curso (90 s) e gatilho de frenesi da noite 3
     m_nightTimer = std::max(0.0f, m_nightTimer - deltaTime);
+    elapsedSeconds = GameConfig::kNightDurationSeconds - m_nightTimer;
+    if (m_runState.currentNight == 3 && !m_frenzyStarted &&
+        elapsedSeconds >= GameConfig::kFrenzyStartElapsedSeconds) {
+        m_frenzyStarted = true;
+        m_eventBus.emit(Event{EventType::FrenzyStarted, m_runState.currentNight, 0.0f});
+    }
     if (m_nightTimer <= 0.0f) {
         m_runState.score += GameConfig::kNightClearBonusPoints;
         m_runState.lives = m_player.getLives();

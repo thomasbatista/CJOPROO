@@ -26,10 +26,17 @@ public:
             float maxRadius = GameConfig::kLanternMaxRadius);
 
     /**
-     * @brief Atualiza a queima de óleo e os temporizadores do clarão.
+     * @brief Atualiza a queima de óleo, a penalidade por imobilidade e os temporizadores do clarão.
      * @param deltaTime Intervalo de tempo decorrido desde o último quadro em segundos.
+     * @param isMoving Verdadeiro se o jogador estiver se movimentando neste quadro.
      */
-    void update(float deltaTime);
+    void update(float deltaTime, bool isMoving = true);
+
+    /**
+     * @brief Obtém o fator multiplicador atual aplicado ao raio por imobilidade (0.30f a 1.0f).
+     * @return Fator multiplicador do raio base.
+     */
+    float getStillRadiusFactor() const;
 
     /**
      * @brief Dispara uma explosão luminosa caso haja combustível e a recarga esteja pronta.
@@ -106,6 +113,9 @@ private:
     float m_flashActiveDuration;
     float m_flashActiveTimer;
     float m_flashRadiusBonus;
+
+    float m_stillTimer;
+    float m_stillRadiusFactor;
 };
 
 }  // namespace lastwick

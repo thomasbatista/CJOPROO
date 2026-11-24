@@ -15,9 +15,23 @@ namespace lastwick {
 class Player;
 
 /**
- * @brief Tipos de entidades hostis instanciáveis pelo método de fábrica.
+ * @brief Descreve uma fase temporal de surgimento dentro de uma noite.
  */
-enum class EnemyType { Crawler, Wisp, Giant, Splitter };
+struct NightPhase {
+    float startSeconds;   ///< Tempo decorrido da noite (em segundos) em que a fase inicia.
+    float spawnInterval;  ///< Intervalo entre surgimentos de inimigos nesta fase (em segundos).
+    int crawlerWeight;    ///< Peso percentual (0 a 100) para Crawler.
+    int wispWeight;       ///< Peso percentual (0 a 100) para Wisp.
+    int giantWeight;      ///< Peso percentual (0 a 100) para Giant.
+    int splitterWeight;   ///< Peso percentual (0 a 100) para Splitter.
+};
+
+/**
+ * @brief Configuração da linha do tempo de surgimento de uma noite.
+ */
+struct NightConfig {
+    std::vector<NightPhase> phases;  ///< Lista ordenada de fases por tempo de início.
+};
 
 /**
  * @brief Gerenciador de geração, atualização e ciclo de vida dos inimigos.
@@ -53,8 +67,10 @@ public:
      * @param player Referência ao jogador.
      * @param camera Câmera 2D ativa para cálculo da área visível.
      * @param eventBus Barramento de eventos para emissão de baixas e acertos.
+     * @param elapsedSeconds Tempo decorrido da noite atual em segundos.
      */
-    void update(float deltaTime, Player& player, const Camera2D& camera, EventBus& eventBus);
+    void update(float deltaTime, Player& player, const Camera2D& camera, EventBus& eventBus,
+                float elapsedSeconds = 0.0f);
 
     /**
      * @brief Aplica radiação luminosa instantânea a todos os inimigos no raio do clarão.
@@ -99,18 +115,33 @@ public:
     void setCurrentNight(int night);
 
     /**
-     * @brief Sorteia o tipo de criatura a ser gerada segundo os pesos da noite informada.
-     * @param night Índice da noite em curso.
-     * @return Tipo de criatura selecionado.
+     * @brief Retorna a configuração da linha do tempo de fases para a noite informada.
+     * @param night Índice da noite em curso (1 a 3).
+     * @return Referência constante para NightConfig correspondente.
      */
-    EnemyType chooseEnemyTypeForNight(int night);
+    static const NightConfig& getNightConfig(int night);
 
     /**
-     * @brief Retorna o intervalo temporal entre gerações sucessivas de inimigos para a noite.
-     * @param night Índice da noite em curso.
-     * @return Intervalo em segundos.
+     * @brief Seleciona a fase ativa da noite conforme o tempo decorrido.
+     * @param night Índice da noite em curso (1 a 3).
+     * @param elapsedSeconds Tempo decorrido da noite em segundos.
+     * @return Referência constante para a NightPhase correspondente.
      */
-    float getSpawnIntervalForNight(int night) const;
+    static const NightPhase& getPhaseForTime(int night, float elapsedSeconds);
+
+    /**
+     * @brief Retorna o bônus de óleo concedido ao eliminar um inimigo do tipo informado.
+     * @param type Tipo do inimigo derrotado.
+     * @return Quantidade de combustível a restaurar.
+     */
+    static float getOilBonusForType(EnemyType type);
+
+    /**
+     * @brief Sorteia o tipo de criatura segundo os pesos da fase informada.
+     * @param phase Fase temporal ativa.
+     * @return Tipo de criatura selecionado.
+     */
+    EnemyType chooseEnemyTypeForPhase(const NightPhase& phase);
 
 private:
     Vector2 computeSpawnPosition(const Camera2D& camera);

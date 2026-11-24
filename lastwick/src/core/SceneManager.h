@@ -26,8 +26,9 @@ class SceneManager {
 public:
     /**
      * @brief Construtor padrão do gerenciador.
+     * @param demoMode Verdadeiro quando o modo de demonstração (--demo) está habilitado.
      */
-    SceneManager();
+    explicit SceneManager(bool demoMode = false);
 
     /**
      * @brief Destrutor padrão.
@@ -96,10 +97,17 @@ public:
      */
     void toggleAudioMute();
 
+    /**
+     * @brief Verifica se o modo de demonstração está ativo.
+     * @return Verdadeiro se iniciado com --demo.
+     */
+    bool isDemoMode() const;
+
 private:
     std::unique_ptr<Scene> m_currentScene;
     std::unique_ptr<Scene> m_pendingScene;
     bool m_shouldClose;
+    bool m_demoMode;
 
     FadeState m_fadeState;
     float m_fadeTimer;

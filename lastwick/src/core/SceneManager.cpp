@@ -5,14 +5,17 @@
 
 #include "core/AudioManager.h"
 #include "core/GameConfig.h"
+#include "core/RunState.h"
 #include "raylib.h"
+#include "scenes/GameScene.h"
 
 namespace lastwick {
 
-SceneManager::SceneManager()
+SceneManager::SceneManager(bool demoMode)
     : m_currentScene(nullptr),
       m_pendingScene(nullptr),
       m_shouldClose(false),
+      m_demoMode(demoMode),
       m_fadeState(FadeState::None),
       m_fadeTimer(0.0f),
       m_eventBus(),
@@ -45,6 +48,23 @@ void SceneManager::update(float deltaTime) {
     // Tecla M alterna o silenciamento global de áudio em qualquer cena
     if (IsKeyPressed(KEY_M)) {
         toggleAudioMute();
+    }
+
+    // Atalhos de demonstração: F5, F6 e F7 iniciam diretamente as noites 1, 2 e 3
+    if (m_demoMode) {
+        int targetNight = 0;
+        if (IsKeyPressed(KEY_F5)) {
+            targetNight = 1;
+        } else if (IsKeyPressed(KEY_F6)) {
+            targetNight = 2;
+        } else if (IsKeyPressed(KEY_F7)) {
+            targetNight = 3;
+        }
+        if (targetNight > 0) {
+            RunState demoState{};
+            demoState.currentNight = targetNight;
+            changeScene(std::make_unique<GameScene>(*this, demoState));
+        }
     }
 
     // Atualização contínua do fluxo de música procedural
@@ -133,6 +153,10 @@ bool SceneManager::isAudioMuted() const {
 void SceneManager::toggleAudioMute() {
     AudioManager::toggleMute();
     m_musicPlayer.setMuted(AudioManager::isMuted());
+}
+
+bool SceneManager::isDemoMode() const {
+    return m_demoMode;
 }
 
 }  // namespace lastwick

@@ -23,6 +23,7 @@ FetchContent_MakeAvailable(raylib)
 add_executable(LastWick
     src/main.cpp
     src/core/GameConfig.h
+    src/core/LaunchOptions.h
     src/core/RunState.h
     src/core/HighScoreStore.h
     src/core/HighScoreStore.cpp
@@ -106,6 +107,7 @@ enable_testing()
 add_executable(LastWickTests
     tests/test_main.cpp
     src/core/GameConfig.h
+    src/core/LaunchOptions.h
     src/core/RunState.h
     src/core/HighScoreStore.h
     src/core/HighScoreStore.cpp
