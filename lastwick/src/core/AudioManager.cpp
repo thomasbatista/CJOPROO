@@ -16,8 +16,7 @@ AudioManager::AudioManager()
       m_pickupCollectedSound{},
       m_dawnReachedSound{},
       m_gameOverSound{},
-      m_upgradeChosenSound{},
-      m_waveWarningSound{} {
+      m_upgradeChosenSound{} {
     if (IsAudioDeviceReady()) {
         synthesizeAll();
         m_initialized = true;
@@ -36,7 +35,6 @@ void AudioManager::registerEvents(EventBus& eventBus) {
     eventBus.subscribe(EventType::DawnReached, [this](const Event&) { playDawnReached(); });
     eventBus.subscribe(EventType::GameOver, [this](const Event&) { playGameOver(); });
     eventBus.subscribe(EventType::UpgradeChosen, [this](const Event&) { playUpgradeChosen(); });
-    eventBus.subscribe(EventType::WaveWarning, [this](const Event&) { playWaveWarning(); });
 }
 
 void AudioManager::playEnemyKilled() {
@@ -78,12 +76,6 @@ void AudioManager::playGameOver() {
 void AudioManager::playUpgradeChosen() {
     if (!s_muted && m_initialized && IsAudioDeviceReady()) {
         PlaySound(m_upgradeChosenSound);
-    }
-}
-
-void AudioManager::playWaveWarning() {
-    if (!s_muted && m_initialized && IsAudioDeviceReady()) {
-        PlaySound(m_waveWarningSound);
     }
 }
 
@@ -190,9 +182,6 @@ void AudioManager::synthesizeAll() {
 
     // 7. Melhoria Escolhida: arpejo ascendente cristalino de poder
     m_upgradeChosenSound = synthesizeSound(0.35f, 523.0f, 1318.0f, 0.75f, 3);
-
-    // 8. Alerta de Onda em Pinça: sinal curto e tenso em dois tons descendentes
-    m_waveWarningSound = synthesizeSound(0.25f, 480.0f, 320.0f, 0.40f, 0);
 }
 
 void AudioManager::unloadAll() {
@@ -204,7 +193,6 @@ void AudioManager::unloadAll() {
         UnloadSound(m_dawnReachedSound);
         UnloadSound(m_gameOverSound);
         UnloadSound(m_upgradeChosenSound);
-        UnloadSound(m_waveWarningSound);
         m_initialized = false;
     }
 }

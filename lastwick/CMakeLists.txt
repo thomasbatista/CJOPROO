@@ -39,8 +39,6 @@ add_executable(LastWick
     src/core/Upgrade.cpp
     src/core/UpgradePool.h
     src/core/UpgradePool.cpp
-    src/core/NightConfig.h
-    src/core/NightConfig.cpp
     src/core/TextUtil.h
     src/core/TextUtil.cpp
     src/core/Scene.h
@@ -118,8 +116,6 @@ add_executable(LastWickTests
     src/core/Upgrade.cpp
     src/core/UpgradePool.h
     src/core/UpgradePool.cpp
-    src/core/NightConfig.h
-    src/core/NightConfig.cpp
     src/core/TextUtil.h
     src/core/TextUtil.cpp
     src/entities/Entity.h

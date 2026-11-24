@@ -69,18 +69,11 @@ void MusicPlayer::registerEvents(EventBus& eventBus) {
 
     eventBus.subscribe(EventType::RunEnded,
                        [this](const Event& event) { endRun(event.intValue == 1); });
-
-    eventBus.subscribe(EventType::FrenzyStarted, [this](const Event&) {
-        m_isFrenzy = true;
-        m_noteInterval = 0.90f / GameConfig::kFrenzyMusicTempoMultiplier;
-    });
 }
 
 void MusicPlayer::playMenuTheme() {
     m_state = MusicState::Menu;
     m_isPaused = false;
-    m_isFrenzy = false;
-    m_frenzyNotePhase = 0.0f;
     m_noteInterval = 2.4f;
     m_noteDecayRate = 0.75f;
     m_noteTimer = 0.0f;
@@ -92,8 +85,6 @@ void MusicPlayer::startNight(int night) {
     m_state = MusicState::Night;
     m_currentNight = std::clamp(night, 1, 3);
     m_isPaused = false;
-    m_isFrenzy = false;
-    m_frenzyNotePhase = 0.0f;
     m_endingEnvelope = 0.0f;
 
     // Aumento progressivo de tensão e andamento conforme a noite
@@ -115,8 +106,6 @@ void MusicPlayer::setPaused(bool paused) {
 
 void MusicPlayer::endRun(bool isVictory) {
     m_state = isVictory ? MusicState::VictoryEnding : MusicState::DefeatEnding;
-    m_isFrenzy = false;
-    m_frenzyNotePhase = 0.0f;
     m_endingTimer = 0.0f;
     m_endingEnvelope = 1.0f;
     m_endingPhase1 = 0.0f;
@@ -219,17 +208,6 @@ void MusicPlayer::fillBuffer(short* data, int sampleCount) {
             }
         }
 
-        // 2b. Camada adicional de notas agudas durante o frenesi da noite 3
-        float frenzySample = 0.0f;
-        if (m_isFrenzy && m_noteEnvelope > 0.0f) {
-            float frenzyFreq = m_currentNoteFreq * 2.0f;
-            m_frenzyNotePhase += kTwoPi * frenzyFreq * dt;
-            if (m_frenzyNotePhase >= kTwoPi) {
-                m_frenzyNotePhase -= kTwoPi;
-            }
-            frenzySample = std::sin(m_frenzyNotePhase) * m_noteEnvelope * 0.20f;
-        }
-
         // 3. Acorde curto de vitória ou de derrota
         float endingSample = 0.0f;
         if (m_endingEnvelope > 0.0f) {
@@ -260,7 +238,7 @@ void MusicPlayer::fillBuffer(short* data, int sampleCount) {
         }
 
         // 4. Mixagem das camadas e saturação em 16 bits
-        float mixed = (droneSample + noteSample + frenzySample + endingSample) * 0.70f;
+        float mixed = (droneSample + noteSample + endingSample) * 0.70f;
         mixed = std::clamp(mixed, -1.0f, 1.0f);
         data[i] = static_cast<short>(mixed * 30000.0f);
     }

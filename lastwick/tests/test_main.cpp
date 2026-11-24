@@ -8,7 +8,6 @@
 
 #include "core/GameConfig.h"
 #include "core/HighScoreStore.h"
-#include "core/NightConfig.h"
 #include "core/RunState.h"
 #include "core/Upgrade.h"
 #include "core/UpgradeModifiers.h"
@@ -351,126 +350,23 @@ static void testFragmentOnDeath() {
     std::cout << "  -> testFragmentOnDeath passou com sucesso!\n";
 }
 
-static void testPhaseWeightsSumTo100() {
-    std::cout << "[TEST] Executando testPhaseWeightsSumTo100...\n";
-    for (int n = 1; n <= 3; ++n) {
-        NightConfig config = NightConfig::getForNight(n);
-        const auto& phases = config.getPhases();
-        TEST_ASSERT(!phases.empty());
-        for (const auto& phase : phases) {
-            TEST_ASSERT(phase.weights.sum() == 100);
-        }
-    }
-    std::cout << "  -> testPhaseWeightsSumTo100 passou com sucesso!\n";
-}
+static void testNightWeightsSumToOne() {
+    std::cout << "[TEST] Executando testNightWeightsSumToOne...\n";
 
-static void testPhaseSearchAtBoundaries() {
-    std::cout << "[TEST] Executando testPhaseSearchAtBoundaries...\n";
-    NightConfig night1 = NightConfig::getForNight(1);
+    // Noite 1: apenas Crawler (100%)
+    TEST_ASSERT(std::fabs(GameConfig::kNight1CrawlerWeight - 1.0f) < 0.001f);
 
-    // Limite 0 s: Fase 1 (0-30 s, intervalo 2.5 s, crawler 100)
-    const auto& p0 = night1.getPhaseForTime(0.0f);
-    TEST_ASSERT(p0.startSecond == 0.0f);
-    TEST_ASSERT(std::fabs(p0.spawnInterval - 2.5f) < 0.001f);
-    TEST_ASSERT(p0.weights.crawler == 100);
+    // Noite 2: Crawler (50%) + Wisp (35%) + Splitter (15%) = 100%
+    float night2Sum = GameConfig::kNight2CrawlerWeight + GameConfig::kNight2WispWeight +
+                      GameConfig::kNight2SplitterWeight;
+    TEST_ASSERT(std::fabs(night2Sum - 1.0f) < 0.001f);
 
-    // Limite 29.9 s: ainda Fase 1
-    const auto& p29_9 = night1.getPhaseForTime(29.9f);
-    TEST_ASSERT(p29_9.startSecond == 0.0f);
-    TEST_ASSERT(std::fabs(p29_9.spawnInterval - 2.5f) < 0.001f);
+    // Noite 3: Crawler (30%) + Wisp (30%) + Giant (15%) + Splitter (25%) = 100%
+    float night3Sum = GameConfig::kNight3CrawlerWeight + GameConfig::kNight3WispWeight +
+                      GameConfig::kNight3GiantWeight + GameConfig::kNight3SplitterWeight;
+    TEST_ASSERT(std::fabs(night3Sum - 1.0f) < 0.001f);
 
-    // Limite 30.0 s: Fase 2 (30-60 s, intervalo 2.0 s, crawler 70, wisp 30)
-    const auto& p30 = night1.getPhaseForTime(30.0f);
-    TEST_ASSERT(p30.startSecond == 30.0f);
-    TEST_ASSERT(std::fabs(p30.spawnInterval - 2.0f) < 0.001f);
-    TEST_ASSERT(p30.weights.crawler == 70 && p30.weights.wisp == 30);
-
-    // Limite 89.9 s: Fase 3 (60-90 s, intervalo 1.8 s, crawler 50, wisp 30, giant 20)
-    const auto& p89_9 = night1.getPhaseForTime(89.9f);
-    TEST_ASSERT(p89_9.startSecond == 60.0f);
-    TEST_ASSERT(std::fabs(p89_9.spawnInterval - 1.8f) < 0.001f);
-    TEST_ASSERT(p89_9.weights.giant == 20);
-
-    std::cout << "  -> testPhaseSearchAtBoundaries passou com sucesso!\n";
-}
-
-static void testPincerWaveGeometryAndBounds() {
-    std::cout << "[TEST] Executando testPincerWaveGeometryAndBounds...\n";
-    std::mt19937 rng(42);
-    constexpr float kPi = 3.14159265358979323846f;
-    constexpr float kRadToDeg = 180.0f / kPi;
-
-    for (int i = 0; i < 200; ++i) {
-        float a1 = 0.0f;
-        float a2 = 0.0f;
-        EnemySpawner::computePincerAnglesStatic(rng, a1, a2);
-
-        // Diferença angular entre as duas direções opostas
-        float diff = std::fabs(a2 - a1);
-        while (diff > 2.0f * kPi) {
-            diff -= 2.0f * kPi;
-        }
-        if (diff > kPi) {
-            diff = 2.0f * kPi - diff;
-        }
-        float diffDeg = diff * kRadToDeg;
-
-        // A diferença deve estar entre 150° e 210°
-        TEST_ASSERT(diffDeg >= 150.0f - 0.01f && diffDeg <= 210.0f + 0.01f);
-
-        // Posição de surgimento do grupo dentro do mapa
-        Vector2 playerPos{static_cast<float>(100 + (i * 37) % 2200),
-                          static_cast<float>(100 + (i * 59) % 1600)};
-        Vector2 c1 = EnemySpawner::computePincerGroupCenterStatic(playerPos, a1);
-        Vector2 c2 = EnemySpawner::computePincerGroupCenterStatic(playerPos, a2);
-
-        TEST_ASSERT(c1.x >= GameConfig::kMapBoundaryMargin &&
-                    c1.x <= GameConfig::kMapWidth - GameConfig::kMapBoundaryMargin);
-        TEST_ASSERT(c1.y >= GameConfig::kMapBoundaryMargin &&
-                    c1.y <= GameConfig::kMapHeight - GameConfig::kMapBoundaryMargin);
-        TEST_ASSERT(c2.x >= GameConfig::kMapBoundaryMargin &&
-                    c2.x <= GameConfig::kMapWidth - GameConfig::kMapBoundaryMargin);
-        TEST_ASSERT(c2.y >= GameConfig::kMapBoundaryMargin &&
-                    c2.y <= GameConfig::kMapHeight - GameConfig::kMapBoundaryMargin);
-    }
-    std::cout << "  -> testPincerWaveGeometryAndBounds passou com sucesso!\n";
-}
-
-static void testStillnessLightPenalty() {
-    std::cout << "[TEST] Executando testStillnessLightPenalty...\n";
-    Lantern lantern;
-
-    // Tolerância inicial de 1.5 s parado: fator permanece 1.0
-    lantern.update(1.5f, false);
-    TEST_ASSERT(std::fabs(lantern.getStillnessFactor() - 1.0f) < 0.001f);
-
-    // Parado por mais 2.0 s: encolhe até 30% (fator atinge 0.70)
-    lantern.update(2.0f, false);
-    TEST_ASSERT(std::fabs(lantern.getStillnessFactor() - 0.70f) < 0.01f);
-
-    // Ao se mover por 0.5 s: recupera para 1.0
-    lantern.update(0.5f, true);
-    TEST_ASSERT(std::fabs(lantern.getStillnessFactor() - 1.0f) < 0.001f);
-
-    std::cout << "  -> testStillnessLightPenalty passou com sucesso!\n";
-}
-
-static void testFrenzyIntervalOnNight3() {
-    std::cout << "[TEST] Executando testFrenzyIntervalOnNight3...\n";
-    NightConfig night3 = NightConfig::getForNight(3);
-
-    // Antes dos 65 s: intervalo de 1.3 s
-    const auto& before = night3.getPhaseForTime(64.9f);
-    TEST_ASSERT(std::fabs(before.spawnInterval - 1.3f) < 0.001f);
-
-    // A partir dos 65 s (frenesi): intervalo de 0.7 s
-    const auto& atFrenzy = night3.getPhaseForTime(65.0f);
-    TEST_ASSERT(std::fabs(atFrenzy.spawnInterval - 0.7f) < 0.001f);
-
-    const auto& duringFrenzy = night3.getPhaseForTime(75.0f);
-    TEST_ASSERT(std::fabs(duringFrenzy.spawnInterval - 0.7f) < 0.001f);
-
-    std::cout << "  -> testFrenzyIntervalOnNight3 passou com sucesso!\n";
+    std::cout << "  -> testNightWeightsSumToOne passou com sucesso!\n";
 }
 
 int main() {
@@ -487,11 +383,7 @@ int main() {
     testUpgradeModifiers();
     testSplitterOnDeath();
     testFragmentOnDeath();
-    testPhaseWeightsSumTo100();
-    testPhaseSearchAtBoundaries();
-    testPincerWaveGeometryAndBounds();
-    testStillnessLightPenalty();
-    testFrenzyIntervalOnNight3();
+    testNightWeightsSumToOne();
 
     std::cout << "========================================\n";
     std::cout << "   Todos os testes passaram com exito!\n";

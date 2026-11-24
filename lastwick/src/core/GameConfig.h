@@ -40,13 +40,6 @@ struct GameConfig {
     static constexpr float kFlareVisualDuration = 0.5f;
     static constexpr float kFlareExtraExposure = 1.5f;
 
-    // Penalidade de iluminação por imobilidade
-    static constexpr float kStillnessDelay = 1.5f;
-    static constexpr float kStillnessShrinkDuration = 2.0f;
-    static constexpr float kStillnessRecoverDuration = 0.5f;
-    static constexpr float kStillnessMaxReduction = 0.30f;
-    static constexpr float kStillnessMinFactor = 0.70f;
-
     // Parâmetros comuns dos inimigos
     static constexpr float kDarkSpeedMultiplier = 1.6f;
     static constexpr float kExposureDecayRate = 0.35f;
@@ -60,7 +53,7 @@ struct GameConfig {
     static constexpr float kCrawlerRadius = 14.0f;
 
     // Wisp (espectro rápido em zigue-zague)
-    static constexpr float kWispSpeed = 264.0f;
+    static constexpr float kWispSpeed = 170.0f;
     static constexpr float kWispMaxExposure = 0.5f;
     static constexpr int kWispContactDamage = 1;
     static constexpr float kWispRadius = 11.0f;
@@ -68,7 +61,7 @@ struct GameConfig {
     static constexpr float kWispSineFrequency = 5.5f;
 
     // Giant (gigante resistente e lento)
-    static constexpr float kGiantSpeed = 111.0f;
+    static constexpr float kGiantSpeed = 60.0f;
     static constexpr float kGiantMaxExposure = 3.0f;
     static constexpr int kGiantContactDamage = 2;
     static constexpr float kGiantRadius = 26.0f;
@@ -93,26 +86,6 @@ struct GameConfig {
     static constexpr int kPointsPerRemainingLife = 50;
     static constexpr float kNightIntroDuration = 3.0f;
     static constexpr int kTotalNights = 3;
-
-    // Efeitos atmosféricos da Noite 2
-    static constexpr float kNight2LightRadiusMultiplier = 0.90f;
-    static constexpr int kNight2FogCircleCount = 25;
-    static constexpr float kNight2FogBannerDuration = 3.0f;
-
-    // Ondas em pinça (Pincer Wave)
-    static constexpr float kPincerWaveFirstTime = 10.0f;
-    static constexpr float kPincerWaveWarningDuration = 1.0f;
-    static constexpr float kPincerWaveNight2Interval = 20.0f;
-    static constexpr float kPincerWaveNight3Interval = 12.0f;
-    static constexpr int kPincerWaveNight2GroupSize = 3;
-    static constexpr int kPincerWaveNight3GroupSize = 4;
-    static constexpr float kPincerWaveAngleSpreadDeg = 15.0f;
-    static constexpr int kPincerWaveExtraCapacity = 6;
-
-    // Frenesi da Noite 3
-    static constexpr float kFrenzyStartTime = 65.0f;
-    static constexpr float kFrenzySpawnInterval = 0.7f;
-    static constexpr float kFrenzyMusicTempoMultiplier = 1.25f;
 
     // Intervalos e proporções de surgimento por noite
     static constexpr float kNight1SpawnInterval = 2.5f;
